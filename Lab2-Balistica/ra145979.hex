@@ -1,0 +1,36 @@
+000 009 3E8 00B 3FF #Coloca o 10 em MQ "LOAD MQ, M(X)" || AC:MQ := MQ × Mem[X](gravidade) = gx
+001 021 3E9 015 000 #Guarda gx na memoria 1001 || Realiza AC = gx/2 = k
+002 021 3EA  #Guarda k na memoria 1002 
+
+
+3EB 009 # Coloca no contador o valor 9
+#Jump condicional
+
+001 3E9 #Carrega o gx (que esta na memoria 1001) em AC
+00C 3EA #Faz MQ = gx/k (k está na memoria 1002)
+00A 000 #Faz AC = MQ
+005 3EA 015 000 #Soma AC = gx/k + k || divide a soma por 2
+021 3EA #atualiza o k
+
+
+
+3E8 00A #Guarda na memória 1000 o valor da gravidade - 10
+3FF DAC #Guarda a distancia x na memória 1023
+
+
+
+#realiza gx/2
+
+
+
+#Realiza 10 vezes a formula k' = (k + y/k)/2, sendo k = y/2 para achar o valor de sqrt(y)
+
+#calcula o valor de k: 
+
+
+#colocar x no endereço 0x3FF -(último endereço)
+#jogar resultado no AC
+#saltar para  endereço 0x400
+
+
+coloca na memoria 1003 um contador começando com 1
