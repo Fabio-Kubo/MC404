@@ -3,8 +3,9 @@
 002 021 3EA  #Guarda k na memoria 1002 
 
 
-3EB 009 # Coloca no contador o valor 9
-#Jump condicional
+3EB 009 # Cria um contador com valor 10 na memoria 1003
+# realiza um jump pro jump condicional
+
 
 001 3E9 #Carrega o gx (que esta na memoria 1001) em AC
 00C 3EA #Faz MQ = gx/k (k está na memoria 1002)
@@ -12,25 +13,12 @@
 005 3EA 015 000 #Soma AC = gx/k + k || divide a soma por 2
 021 3EA #atualiza o k
 
+#Atualiza o contador
+# Carrega a memoria 1003 o contador no AC
+#Jump condicional faz voltar caso o AC nao seja negativo
 
+# joga o resultado em AC
+# pula loucamente para a memoria 400 fim
 
 3E8 00A #Guarda na memória 1000 o valor da gravidade - 10
 3FF DAC #Guarda a distancia x na memória 1023
-
-
-
-#realiza gx/2
-
-
-
-#Realiza 10 vezes a formula k' = (k + y/k)/2, sendo k = y/2 para achar o valor de sqrt(y)
-
-#calcula o valor de k: 
-
-
-#colocar x no endereço 0x3FF -(último endereço)
-#jogar resultado no AC
-#saltar para  endereço 0x400
-
-
-coloca na memoria 1003 um contador começando com 1
