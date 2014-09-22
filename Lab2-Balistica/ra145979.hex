@@ -1,14 +1,18 @@
 000 09 3E8 0B 3FF #Coloca o 10 em MQ "LOAD MQ, M(X)" || AC:MQ := MQ × Mem[X](gravidade) = gx
-001 21 3E9 15 000 #Guarda gx na memoria 1001 || Realiza AC = gx/2 = k
-002 21 3EA 0E 007 #Guarda k na memoria 1002 || realiza um jump pro jump condicional
-003 01 3E9 0C 3EA #Carrega o gx (que esta na memoria 1001) em AC || Faz MQ = gx/k (k está na memoria 1002)
-004 0A 000 05 3EA #Faz AC = MQ || Soma AC = gx/k + k 
-005 15 000 21 3EA #Divide a soma por 2
-006 01 3EB 06 3EC #Carrega contador em AC || Subtrai o 1 do contador
-007 21 3EB 0F 003 #Salva novo valor do contador || Jump condicional faz voltar caso o AC nao seja negativo
-008 01 3EA 0D 400 #Coloca o resultado em AC || pula loucamente para a memoria 400 fim
+001 0A 000 21 3E9 #Faz AC = MQ || Guarda gx na memoria 1001 
+002 15 000 21 3EA #Realiza AC = gx/2 = k || Guarda k na memoria 1002 
+003 01 3EB 0E 008 #Carrega contador em AC || Realiza um jump pro jump condicional
 
-3E8 00 000 00 00A #Guarda na memória 1000 o valor da gravidade - 10
-3EB 00 000 00 009 # Cria um contador com valor 10 na memoria 1003
-3EC 00 000 00 001 #Guarda a constante 1
-3FF 00 000 00 DAC #Guarda a distancia x na memória 1023
+
+004 01 3E9 0C 3EA #Carrega o gx (que esta na memoria 1001) em AC || Faz MQ = gx/k (k está na memoria 1002)
+005 0A 000 05 3EA #Faz AC = MQ || Soma AC = gx/k + k 
+006 15 000 21 3EA #Divide a soma por 2
+007 01 3EB 06 3EC #Carrega contador em AC || Subtrai o 1 do contador
+008 21 3EB 0F 004 #Salva novo valor do contador || Jump condicional faz voltar caso o AC nao seja negativo
+
+009 01 3EA 0D 400 #Coloca o resultado em AC || jump para a memoria 400 para forcar o fim do programa
+
+3E8 00 00000 00A #Guarda na memória 1000 o valor da gravidade - 10
+3EB 00 00000 009 # Cria um contador com valor 10 na memoria 1003
+3EC 00 00000 001 #Guarda a constante 1
+3FF 00 00000 3E8 #Guarda a distancia x na memória 1023
