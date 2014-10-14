@@ -90,7 +90,7 @@ void retiraComentario(char * codigoAssembly){
 	int i;
 
 	for (i = 0; codigoAssembly[i] != '\0'; i++) {
-		if(codigoAssembly[i] == '#' || codigoAssembly[i] == '\n')
+		if(codigoAssembly[i] == '#')
 			codigoAssembly[i] = '\0';
 	}
 }
