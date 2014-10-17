@@ -7,7 +7,27 @@
 typedef struct Posicao{
 	int linha;
 	int isEsquerda;
-} Posicao;
+} PosicaoMemoria;
+
+typedef struct RotuloEndereco{
+	char * rotulo;
+	int endereco;
+	struct RotuloEndereco * prox;
+} RotuloEndereco;
+
+	
+RotuloEndereco * alocaRotuloEndereco(){
+
+	RotuloEndereco * rotuloEndereco;	
+	rotuloEndereco = (RotuloEndereco *) malloc(sizeof(RotuloEndereco));
+
+	if(rotuloEndereco == NULL) {
+		printf("Erro ao alocar o rotuloEndereco\n");
+		exit(EXIT_FAILURE);
+	}
+
+	return rotuloEndereco;
+}
 
 void alteraParaMinusculo(char * string){
 
@@ -61,55 +81,77 @@ void stringToLower(char * string){
 	}
 }
 
+void adicionaRotulo(char * novoRotulo, RotuloEndereco ** mapaRotulosEnderecos){
+
+	RotuloEndereco * novoRotuloEndereco, * ultimoRotulo;
+
+	novoRotuloEndereco = alocaRotuloEndereco();
+
+	(* novoRotuloEndereco).rotulo = novoRotulo;
+	(* novoRotuloEndereco).endereco = 13213131;
+	(* novoRotuloEndereco).prox = NULL;
+
+	if((* mapaRotulosEnderecos) == NULL){
+		(* mapaRotulosEnderecos) = novoRotuloEndereco;
+	}
+	else{
+
+		ultimoRotulo = (* mapaRotulosEnderecos);
+
+		while((* ultimoRotulo).prox != NULL){
+			ultimoRotulo = (* ultimoRotulo).prox;
+		}
+
+		(* ultimoRotulo).prox = novoRotuloEndereco;
+	}
+
+}
+
 
 void processaLinha(char ** controleLinhas, int qtdLinhas){
 
-	int i, j, k;
-	char * diretiva, * linhaQuebrada;
+	int i, diretivaId;
+	char * linhaQuebrada;
+	RotuloEndereco * mapaRotulosEnderecos;
 	const char * separadores = " 	\n";
 	
-	//percorre as linhas
+	mapaRotulosEnderecos = NULL;
+
+
 	for(i = 0; i < qtdLinhas; i++){
 
-		for (j = 0; controleLinhas[i][j] != '\0' && controleLinhas[i][j] != '\n'; j++) {
+		linhaQuebrada = strtok(controleLinhas[i], separadores);			
+		stringToLower(linhaQuebrada);
 
-			linhaQuebrada = strtok(controleLinhas[i][j], separadores);
+		while(linhaQuebrada != NULL){
 
-			while(linhaQuebrada != NULL){
-
-				linhaQuebrada = strtok(NULL, separadores);
-			}
-
-
-
-
-			//se começar com ponto, vai vir uma diretiva
-			if(controleLinhas[i][j] == '.'){
-
-				diretiva = alocaVetorChar(6);
-
-				for (k = 0; !isCharFimComando(controleLinhas[i][j]); k++, j++){
+			/*Se for diretiva*/
+			if(linhaQuebrada[0] == '.'){
 					
-					if(k > 5){
+				diretivaId = isDiretiva(&linhaQuebrada[1]);
+
+				switch(diretivaId){
+					case 0:
+						break;
+					case 1:
+						break;
+					case 2:
+						break;
+					case 3:
+						break;
+					case 4:
+						break;
+					default:
 						printf("Diretiva incorreta, linha %d \n", i);
 						exit(EXIT_FAILURE);
-					}
-
-					diretiva[k] = tolower(controleLinhas[i][j]);
 				}
 
-
-
-
-				free(diretiva);
-
-				if(isCharFimLinha(controleLinhas[i][j]))
-					break;
+			}
+			else if(linhaQuebrada[strlen(linhaQuebrada) - 1] == ':'){ /*Se for rotulo*/
+				adicionaRotulo(linhaQuebrada, &mapaRotulosEnderecos);
 			}
 
-			if(controleLinhas[i][j] != '\0' && controleLinhas[i][j] != '\n')
-				break;
-
+			linhaQuebrada = strtok(NULL, separadores);
 			
 		}
 	}
