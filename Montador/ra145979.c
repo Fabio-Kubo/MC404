@@ -104,9 +104,7 @@ void adicionaRotulo(char * novoRotulo, RotuloEndereco ** mapaRotulosEnderecos){
 
 		(* ultimoRotulo).prox = novoRotuloEndereco;
 	}
-
 }
-
 
 void processaLinha(char ** controleLinhas, int qtdLinhas){
 
@@ -116,7 +114,6 @@ void processaLinha(char ** controleLinhas, int qtdLinhas){
 	const char * separadores = " 	\n";
 	
 	mapaRotulosEnderecos = NULL;
-
 
 	for(i = 0; i < qtdLinhas; i++){
 
@@ -155,7 +152,6 @@ void processaLinha(char ** controleLinhas, int qtdLinhas){
 			
 		}
 	}
-	
 }
 
 int main(int argc, char *argv[]){
