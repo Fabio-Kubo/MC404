@@ -16,6 +16,13 @@ typedef struct RotuloEndereco{
 	struct RotuloEndereco * prox;
 } RotuloEndereco;
 
+typedef struct Palavra{
+	int endereco;
+	int isEsquerda;
+	int conteudo;
+	struct Palavra * prox;
+} Palavra;
+
 PosicaoMemoria posicaoMemoriaAtual;
 
 	
@@ -79,8 +86,11 @@ int isCharFimLinha(char a){
 void stringToLower(char * string){
 	int i;
 
-	for (i = 0; string[i] != '\0'; i++) {
-		string[i] = tolower(string[i]);
+	if(string != NULL){
+		
+		for (i = 0; string[i] != '\0'; i++) {
+			string[i] = tolower(string[i]);
+		}
 	}
 }
 
@@ -131,8 +141,12 @@ int hexaToInt(char c){
 	else if(c == 'f'){
 		numero = 15;
 	}
-	else{
+	else if(isdigit(c)){
 		numero = c - '0';
+	}
+	else{
+		printf("Erro ao converter um hexadecimal para decimal\n");
+		exit(EXIT_FAILURE);
 	}
 
 	return numero;
@@ -151,11 +165,13 @@ int toInt(char * numeroString) {
 			numero+= hexaToInt(numeroString[0]) * pow(16, tamanho);
 			tamanho--;
 		}
-
-		return numero;
 	}
-	else
-		return atoi(numeroString);
+	else{
+		numero = atoi(numeroString);
+		if(numero < 0 || numero > 1023){
+			printf("A memoria nao pertence ao intervalo valido - Utilize 0 - 1023\n");
+		}
+	}
  return numero;
 }
 
@@ -164,7 +180,7 @@ void atualizaPosicaoMemoria(char * enderecoMemoria){
 	posicaoMemoriaAtual.linha = toInt(enderecoMemoria);
 }
 
-void processaLinha(char ** controleLinhas, int qtdLinhas){
+void processaLinhas(char ** controleLinhas, int qtdLinhas){
 
 	int i, diretivaId;
 	char * linhaQuebrada;
@@ -175,11 +191,11 @@ void processaLinha(char ** controleLinhas, int qtdLinhas){
 
 	for(i = 0; i < qtdLinhas; i++){
 
+		printf("Conteudo --%s--\n", controleLinhas[i]);
 		linhaQuebrada = strtok(controleLinhas[i], separadores);		
 		stringToLower(linhaQuebrada);
 
 		if(linhaQuebrada != NULL){
-
 			/*Se for diretiva*/
 			if(linhaQuebrada[0] == '.'){
 					
@@ -188,6 +204,7 @@ void processaLinha(char ** controleLinhas, int qtdLinhas){
 				switch(diretivaId){
 					/*org*/
 					case 0:
+						printf("%s\n", linhaQuebrada);
 						//pega o endereco
 						linhaQuebrada = strtok(NULL, separadores);
 						stringToLower(linhaQuebrada);
@@ -214,9 +231,13 @@ void processaLinha(char ** controleLinhas, int qtdLinhas){
 			else if(linhaQuebrada[strlen(linhaQuebrada) - 1] == ':'){ /*Se for rotulo*/
 				adicionaRotulo(linhaQuebrada, &mapaRotulosEnderecos);
 			}
-		}			
-		
+		}
 	}
+
+	/*while(mapaRotulosEnderecos != NULL){
+		printf("%s\n", (* mapaRotulosEnderecos).rotulo);
+		mapaRotulosEnderecos = (* mapaRotulosEnderecos).prox;
+	}*/
 }
 
 int main(int argc, char *argv[]){
@@ -237,6 +258,7 @@ int main(int argc, char *argv[]){
     }
 
     read_ASM_file(argv[1], &codigoAssembly, &controleLinhas, &qtdLinhas);
+    processaLinhas(controleLinhas, qtdLinhas);
 
     free(codigoAssembly);
     free(controleLinhas);

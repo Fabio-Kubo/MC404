@@ -47,17 +47,19 @@ FILE * abreArquivoLeitura(char * nomeArquivo){
 char ** retornaControleLinhas(char * codigoAssembly, int * qtdLinhas){
 
 	char ** controleLinhas;
-	int tamanho, i, iControlePalavras;
+	int tamanho, i, indiceLinha;
 
 	tamanho = 2048;
 	(* qtdLinhas) = 0;
-
 	controleLinhas = alocaVetorPonteiroDeChar(tamanho);
-	iControlePalavras = 0;
-	for (i = 0; codigoAssembly[i] != '\0'; i++) {
+	indiceLinha = 0;
+	
+	controleLinhas[indiceLinha++] = codigoAssembly;
+
+	for (i = 0; codigoAssembly[i] != '\0'; i++){
 		if(codigoAssembly[i] == '\n'){
-			controleLinhas[iControlePalavras] = &codigoAssembly[i + 1];
-			iControlePalavras++;
+			controleLinhas[indiceLinha] = &codigoAssembly[i + 1];
+			indiceLinha++;
 			(* qtdLinhas)++;
 		}
 	}
@@ -81,8 +83,7 @@ char * retornaTextoArquivo(char * nomeArquivo) {
     //le todo o arquivo
 	codigoAssembly = alocaVetorChar(tamanhoCodigo);
     fread(codigoAssembly, 1, tamanhoCodigo, arquivoAsm);
-    codigoAssembly[tamanhoCodigo] = '\0';
-
+    codigoAssembly[tamanhoCodigo - 1] = '\0';
     fclose(arquivoAsm);
 
     return codigoAssembly;
