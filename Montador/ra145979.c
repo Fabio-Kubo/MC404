@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 #include <ctype.h>
 #include "readASM.h"
 
@@ -14,6 +15,8 @@ typedef struct RotuloEndereco{
 	int endereco;
 	struct RotuloEndereco * prox;
 } RotuloEndereco;
+
+PosicaoMemoria posicaoMemoriaAtual;
 
 	
 RotuloEndereco * alocaRotuloEndereco(){
@@ -88,7 +91,7 @@ void adicionaRotulo(char * novoRotulo, RotuloEndereco ** mapaRotulosEnderecos){
 	novoRotuloEndereco = alocaRotuloEndereco();
 
 	(* novoRotuloEndereco).rotulo = novoRotulo;
-	(* novoRotuloEndereco).endereco = 13213131;
+	(* novoRotuloEndereco).endereco = posicaoMemoriaAtual.linha;
 	(* novoRotuloEndereco).prox = NULL;
 
 	if((* mapaRotulosEnderecos) == NULL){
@@ -106,6 +109,61 @@ void adicionaRotulo(char * novoRotulo, RotuloEndereco ** mapaRotulosEnderecos){
 	}
 }
 
+int hexaToInt(char c){
+	
+	int numero;
+
+	if(c == 'a'){
+		numero = 10;
+	}
+	else if(c == 'b'){
+		numero = 11;
+	}
+	else if(c == 'c'){
+		numero = 12;
+	}
+	else if(c == 'd'){
+		numero = 13;
+	}
+	else if(c == 'e'){
+		numero = 14;
+	}
+	else if(c == 'f'){
+		numero = 15;
+	}
+	else{
+		numero = c - '0';
+	}
+
+	return numero;
+}
+
+int toInt(char * numeroString) {
+	int c, tamanho, numero;
+	
+	numero = 0;
+	if(strlen(numeroString) > 2 && numeroString[0] == '0' && numeroString[1] == 'x'){
+
+		numeroString += 2;
+		tamanho = strlen(numeroString) - 1;
+
+		while (numeroString != NULL){
+			numero+= hexaToInt(numeroString[0]) * pow(16, tamanho);
+			tamanho--;
+		}
+
+		return numero;
+	}
+	else
+		return atoi(numeroString);
+ return numero;
+}
+
+void atualizaPosicaoMemoria(char * enderecoMemoria){
+
+	posicaoMemoriaAtual.linha = toInt(enderecoMemoria);
+}
+
 void processaLinha(char ** controleLinhas, int qtdLinhas){
 
 	int i, diretivaId;
@@ -117,10 +175,10 @@ void processaLinha(char ** controleLinhas, int qtdLinhas){
 
 	for(i = 0; i < qtdLinhas; i++){
 
-		linhaQuebrada = strtok(controleLinhas[i], separadores);			
+		linhaQuebrada = strtok(controleLinhas[i], separadores);		
 		stringToLower(linhaQuebrada);
 
-		while(linhaQuebrada != NULL){
+		if(linhaQuebrada != NULL){
 
 			/*Se for diretiva*/
 			if(linhaQuebrada[0] == '.'){
@@ -128,14 +186,23 @@ void processaLinha(char ** controleLinhas, int qtdLinhas){
 				diretivaId = isDiretiva(&linhaQuebrada[1]);
 
 				switch(diretivaId){
+					/*org*/
 					case 0:
+						//pega o endereco
+						linhaQuebrada = strtok(NULL, separadores);
+						stringToLower(linhaQuebrada);
+						atualizaPosicaoMemoria(linhaQuebrada);
 						break;
+					/*align*/
 					case 1:
 						break;
+					/*wfill*/
 					case 2:
 						break;
+					/*word*/
 					case 3:
 						break;
+					/*set*/
 					case 4:
 						break;
 					default:
@@ -147,10 +214,8 @@ void processaLinha(char ** controleLinhas, int qtdLinhas){
 			else if(linhaQuebrada[strlen(linhaQuebrada) - 1] == ':'){ /*Se for rotulo*/
 				adicionaRotulo(linhaQuebrada, &mapaRotulosEnderecos);
 			}
-
-			linhaQuebrada = strtok(NULL, separadores);
-			
-		}
+		}			
+		
 	}
 }
 
@@ -163,6 +228,8 @@ int main(int argc, char *argv[]){
 	qtdLinhas = 0;
 	codigoAssembly = NULL;
 	controleLinhas = NULL;
+	posicaoMemoriaAtual.linha = 0;
+	posicaoMemoriaAtual.isEsquerda = 1;
 
     if (argc <= 1) {
 	    printf("Informe pelo menos um arquivo de entrada.\n");
