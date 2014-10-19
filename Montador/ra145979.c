@@ -162,11 +162,12 @@ int toInt(char * numeroString) {
 	if(strlen(numeroString) > 2 && numeroString[0] == '0' && numeroString[1] == 'x'){
 
 		numeroString += 2;
-		tamanho = strlen(numeroString) - 1;
+		tamanho = strlen(numeroString);
 
-		while (numeroString != NULL){
-			numero+= hexaToInt(numeroString[0]) * pow(16, tamanho);
+		while (numeroString[0] != '\0'){
 			tamanho--;
+			numero+= hexaToInt(numeroString[0]) * pow(16, tamanho);
+			numeroString++;
 		}
 	}
 	else{
@@ -514,7 +515,6 @@ void mapeaRotulos(char ** controleLinhas, int qtdLinhas){
 
 			/*Se for diretiva*/
 			if(linhaQuebrada[0] == '.'){
-					
 				diretivaId = isDiretiva(&linhaQuebrada[1]);
 				linhaQuebrada = strtok(NULL, separadores);
 				stringToLower(linhaQuebrada);
@@ -531,7 +531,7 @@ void mapeaRotulos(char ** controleLinhas, int qtdLinhas){
 	}
 
 	while(mapaRotulosEnderecos != NULL){
-		printf("%s\n", (* mapaRotulosEnderecos).rotulo);
+		printf("%s linha: %d\n", (* mapaRotulosEnderecos).rotulo, (* mapaRotulosEnderecos).endereco.linha);
 		mapaRotulosEnderecos = (* mapaRotulosEnderecos).prox;
 	}
 }
@@ -614,7 +614,8 @@ int main(int argc, char *argv[]){
     }
 
     read_ASM_file(argv[1], &codigoAssembly, &controleLinhas, &qtdLinhas);
-    processaLinhas(controleLinhas, qtdLinhas);
+    mapeaRotulos(controleLinhas, qtdLinhas);
+    //processaLinhas(controleLinhas, qtdLinhas);
 
     free(codigoAssembly);
     free(controleLinhas);
