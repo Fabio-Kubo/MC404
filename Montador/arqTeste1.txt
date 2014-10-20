@@ -1,8 +1,8 @@
 .org 0x000
-laco: 001 0D 00 00 00 00
-ld M(var_x)
-SUB M(const1) 100 00 00 00 00 09
-jmp M(laco) 101 00 00 00 00 01
+laco: 
+ld var_x
+SUB const1
+jmp laco
 
 .org 0x100
 var_x:
