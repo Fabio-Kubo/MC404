@@ -16,6 +16,12 @@ typedef struct RotuloEndereco{
 	struct RotuloEndereco * prox;
 } RotuloEndereco;
 
+typedef struct Simbolo{
+	char * nome;
+	int valor;
+	struct Simbolo * prox;
+} Simbolo;
+
 typedef struct Palavra{
 	int linha;
 	int instrucaoEsq;
@@ -29,6 +35,8 @@ typedef struct Palavra{
 Endereco posicaoMemoriaAtual;
 Palavra * palavras;
 RotuloEndereco * mapaRotulosEnderecos;
+Simbolo * mapaSimbolos;
+
 const char * separadores = " 	\n";
 	
 RotuloEndereco * alocaRotuloEndereco(){
@@ -42,6 +50,19 @@ RotuloEndereco * alocaRotuloEndereco(){
 	}
 
 	return rotuloEndereco;
+}
+
+Simbolo * alocaSimbolo(){
+
+	Simbolo * novoSimbolo;
+	novoSimbolo = (Simbolo *) malloc(sizeof(Simbolo));
+
+	if(novoSimbolo == NULL) {
+		printf("Erro ao alocar o novoSimbolo\n");
+		exit(EXIT_FAILURE);
+	}
+
+	return novoSimbolo;
 }
 
 Palavra * alocaPalavra(){
@@ -114,6 +135,24 @@ int isCharFimLinha(char a){
 	return a == '\n' || a == '\0';
 }
 
+Simbolo * retornaSimbolo(char * nomeSimboloBuscado){
+
+	Simbolo * simboloBuscado, * aux;
+
+	simboloBuscado = NULL;
+
+	aux = mapaSimbolos;
+	while(aux != NULL){
+		if(strcmp((* aux).nome, nomeSimboloBuscado) == 0){
+			simboloBuscado = aux;
+			break;
+		}
+		aux = (* aux).prox;
+	}
+
+	return simboloBuscado;
+}
+
 void stringToLower(char * string){
 	int i;
 
@@ -131,7 +170,8 @@ void adicionaRotulo(char * novoRotulo){
 
 	novoRotuloEndereco = alocaRotuloEndereco();
 
-	(* novoRotuloEndereco).rotulo = novoRotulo;
+	(* novoRotuloEndereco).rotulo = alocaVetorChar(strlen(novoRotulo) + 1);
+	strcpy((* novoRotuloEndereco).rotulo, novoRotulo);
 	(* novoRotuloEndereco).endereco.linha = posicaoMemoriaAtual.linha;
 	(* novoRotuloEndereco).endereco.isEsquerda = posicaoMemoriaAtual.isEsquerda;
 	(* novoRotuloEndereco).prox = NULL;
@@ -148,6 +188,32 @@ void adicionaRotulo(char * novoRotulo){
 		}
 
 		(* ultimoRotulo).prox = novoRotuloEndereco;
+	}
+}
+
+void adicionaSimbolo(char * nomeSimbolo, int valor){
+
+	Simbolo * novoSimbolo, * ultimoSimbolo;
+
+	novoSimbolo = alocaSimbolo();
+
+	(* novoSimbolo).nome = alocaVetorChar(strlen(nomeSimbolo) + 1);
+	strcpy((* novoSimbolo).nome, nomeSimbolo);
+	(* novoSimbolo).valor = valor;
+	(* novoSimbolo).prox = NULL;
+
+	if(mapaSimbolos == NULL){
+		mapaSimbolos = novoSimbolo;
+	}
+	else{
+
+		ultimoSimbolo = mapaSimbolos;
+
+		while((* ultimoSimbolo).prox != NULL){
+			ultimoSimbolo = (* ultimoSimbolo).prox;
+		}
+
+		(* ultimoSimbolo).prox = novoSimbolo;
 	}
 }
 
@@ -383,9 +449,10 @@ int getEnderecoDaInstrucao(char * linhaQuebrada){
 	return codigo;
 }
 
-void atualizaPosicaoMemoriaDiretiva(int diretivaId, char * parametro){
+void processamentoInicialDiretivas(int diretivaId, char * parametro){
 
 	int linha, i, aux;
+	char * nomeSimbolo;
 
 	switch(diretivaId){
 		/*org*/
@@ -431,8 +498,11 @@ void atualizaPosicaoMemoriaDiretiva(int diretivaId, char * parametro){
 
 			atualizaPosicaoMemoria(linha, 1);
 			break;
-		/*set - nao influencia na memoria*/
+		
 		case 4:
+			nomeSimbolo = parametro;
+			parametro = strtok(NULL, separadores);
+			adicionaSimbolo(nomeSimbolo, toInt(parametro));
 			break;
 		default:
 			printf("Diretiva incorreta\n");
@@ -440,46 +510,49 @@ void atualizaPosicaoMemoriaDiretiva(int diretivaId, char * parametro){
 	}
 }
 
-void mapeaRotulos(char ** controleLinhas, int qtdLinhas){
+void mapeaRotulosEDiretivaSet(char ** controleLinhas, int qtdLinhas){
 
 	int i, diretivaId;
 	char * linhaQuebrada;
+	char * copiaLinha;
 	
 	mapaRotulosEnderecos = NULL;
 
 	for(i = 0; i < qtdLinhas; i++){
 
-		linhaQuebrada = strtok(controleLinhas[i], separadores);		
-		
-		if(linhaQuebrada != NULL){
-			stringToLower(linhaQuebrada);
+		if(controleLinhas[i] != NULL){
 
-			if(linhaQuebrada[strlen(linhaQuebrada) - 1] == ':'){ /*Se for rotulo*/
-				adicionaRotulo(linhaQuebrada);
-				linhaQuebrada = strtok(NULL, separadores);
-			}
-			/*Se for diretiva*/
-			else if(linhaQuebrada != NULL && linhaQuebrada[0] == '.'){
-				diretivaId = isDiretiva(&linhaQuebrada[1]);
-				linhaQuebrada = strtok(NULL, separadores);
-				stringToLower(linhaQuebrada);
-				atualizaPosicaoMemoriaDiretiva(diretivaId, linhaQuebrada);
-			}
-			else if(linhaQuebrada != NULL){ /*Se for instrucao*/
-				if(posicaoMemoriaAtual.isEsquerda == 0){
-					posicaoMemoriaAtual.linha++;
-					posicaoMemoriaAtual.isEsquerda = 1;
+			stringToLower(controleLinhas[i]);
+			copiaLinha = alocaVetorChar(strlen(controleLinhas[i]) + 1);
+			strcpy(copiaLinha, controleLinhas[i]);
+
+			linhaQuebrada = strtok(copiaLinha, separadores);		
+			
+			if(linhaQuebrada != NULL){
+
+				if(linhaQuebrada[strlen(linhaQuebrada) - 1] == ':'){ /*Se for rotulo*/
+					adicionaRotulo(linhaQuebrada);
+					linhaQuebrada = strtok(NULL, separadores);
 				}
-				else{
-					posicaoMemoriaAtual.isEsquerda = 0;	
+				/*Se for diretiva*/
+				else if(linhaQuebrada != NULL && linhaQuebrada[0] == '.'){
+					diretivaId = isDiretiva(&linhaQuebrada[1]);
+					linhaQuebrada = strtok(NULL, separadores);
+					processamentoInicialDiretivas(diretivaId, linhaQuebrada);
+				}
+				else if(linhaQuebrada != NULL){ /*Se for instrucao*/
+					if(posicaoMemoriaAtual.isEsquerda == 0){
+						posicaoMemoriaAtual.linha++;
+						posicaoMemoriaAtual.isEsquerda = 1;
+					}
+					else{
+						posicaoMemoriaAtual.isEsquerda = 0;	
+					}
 				}
 			}
+
+			free(copiaLinha);
 		}
-	}
-
-	while(mapaRotulosEnderecos != NULL){
-		printf("%s linha: %d\n", (* mapaRotulosEnderecos).rotulo, (* mapaRotulosEnderecos).endereco.linha);
-		mapaRotulosEnderecos = (* mapaRotulosEnderecos).prox;
 	}
 }
 
@@ -535,7 +608,6 @@ Endereco retornaEnderecoParaInstrucao(char * parametro){
 
 	if(parametro != NULL){
 
-		/*Se for rotulo*/
 		if(strlen(parametro) > 2 && parametro[0] == 'm' && parametro[0] == '('){
 			endereco.linha = retornaNumeroSemFormatacao(parametro);
 			endereco.isEsquerda = 1;
@@ -745,9 +817,6 @@ void processaLinhas(char ** controleLinhas, int qtdLinhas){
 			else if(linhaQuebrada != NULL){ 
 				instrucaoId = isInstrucao(linhaQuebrada);
 				linhaQuebrada = strtok(NULL, separadores);
-				if(linhaQuebrada == NULL){
-					printf("Deu ruim\n");
-				}
 				stringToLower(linhaQuebrada);
 				processaInstrucao(instrucaoId, linhaQuebrada);
 			}
@@ -755,11 +824,31 @@ void processaLinhas(char ** controleLinhas, int qtdLinhas){
 	}
 }
 
+void liberaMapasDaMemoria(){
+
+	Simbolo * auxSimbolo;
+	RotuloEndereco * auxRotulo;
+
+	while(mapaSimbolos != NULL){
+		auxSimbolo = (* mapaSimbolos).prox;
+		free((* mapaSimbolos).nome);
+		free(mapaSimbolos);
+		mapaSimbolos = auxSimbolo;
+	}
+
+	while(mapaRotulosEnderecos != NULL){
+		auxRotulo = (* mapaRotulosEnderecos).prox;
+		free((* mapaRotulosEnderecos).rotulo);
+		free(mapaRotulosEnderecos);
+		mapaRotulosEnderecos = auxRotulo;
+	}
+}
+
 int main(int argc, char *argv[]){
 
 	char * codigoAssembly;
 	char ** controleLinhas;
-	int qtdLinhas, i;
+	int qtdLinhas;
 
 	qtdLinhas = 0;
 	codigoAssembly = NULL;
@@ -774,24 +863,12 @@ int main(int argc, char *argv[]){
 
     read_ASM_file(argv[1], &codigoAssembly, &controleLinhas, &qtdLinhas);
 
-    printf("1----------------------------\n");
-
-    for (i = 0; i < qtdLinhas; i++){
-    	printf("%s\n", controleLinhas[i]);
-    }
-	printf("----------------------------\n");
-
-    mapeaRotulos(controleLinhas, qtdLinhas);
-
-    printf("2----------------------------\n");
-
-    for (i = 0; i < qtdLinhas; i++){
-    	printf("%s\n", controleLinhas[i]);
-    }
-	printf("----------------------------\n");
+    mapeaRotulosEDiretivaSet(controleLinhas, qtdLinhas);
     
     //processaLinhas(controleLinhas, qtdLinhas);
 
+
+    liberaMapasDaMemoria();
     free(codigoAssembly);
     free(controleLinhas);
     return 0;
