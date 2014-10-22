@@ -167,11 +167,13 @@ void stringToLower(char * string){
 void adicionaRotulo(char * novoRotulo){
 
 	RotuloEndereco * novoRotuloEndereco, * ultimoRotulo;
+	int tamanho;
 
 	novoRotuloEndereco = alocaRotuloEndereco();
-
-	(* novoRotuloEndereco).rotulo = alocaVetorChar(strlen(novoRotulo) + 1);
+	tamanho = strlen(novoRotulo) + 1;
+	(* novoRotuloEndereco).rotulo = alocaVetorChar(tamanho);
 	strcpy((* novoRotuloEndereco).rotulo, novoRotulo);
+	(* novoRotuloEndereco).rotulo[tamanho - 2] = '\0';//retira os dois pontos(":")
 	(* novoRotuloEndereco).endereco.linha = posicaoMemoriaAtual.linha;
 	(* novoRotuloEndereco).endereco.isEsquerda = posicaoMemoriaAtual.isEsquerda;
 	(* novoRotuloEndereco).prox = NULL;
@@ -416,9 +418,9 @@ RotuloEndereco * retornaRotuloEndereco(char * rotulo){
 
 	RotuloEndereco * rotuloAtual;
 
-	rotuloAtual = mapaRotulosEnderecos;;
-	while(rotuloAtual != NULL ){
+	rotuloAtual = mapaRotulosEnderecos;
 
+	while(rotuloAtual != NULL ){
 		if(strcmp((* rotuloAtual).rotulo, rotulo) == 0){
 			break;
 		}
@@ -515,8 +517,6 @@ void mapeaRotulosEDiretivaSet(char ** controleLinhas, int qtdLinhas){
 	int i, diretivaId;
 	char * linhaQuebrada;
 	char * copiaLinha;
-	
-	mapaRotulosEnderecos = NULL;
 
 	for(i = 0; i < qtdLinhas; i++){
 
@@ -535,7 +535,7 @@ void mapeaRotulosEDiretivaSet(char ** controleLinhas, int qtdLinhas){
 					linhaQuebrada = strtok(NULL, separadores);
 				}
 				/*Se for diretiva*/
-				else if(linhaQuebrada != NULL && linhaQuebrada[0] == '.'){
+				if(linhaQuebrada != NULL && linhaQuebrada[0] == '.'){
 					diretivaId = isDiretiva(&linhaQuebrada[1]);
 					linhaQuebrada = strtok(NULL, separadores);
 					processamentoInicialDiretivas(diretivaId, linhaQuebrada);
@@ -563,6 +563,7 @@ void adicionaDiretiva(int diretivaId, char * parametro){
 void adicionaInstrucaoNasPalavras(int codInstrucao, int parametro){
 
 	Palavra * anterior, * novo;
+	
 	if(palavras != NULL){
 		
 		anterior = NULL;
@@ -593,7 +594,6 @@ void adicionaInstrucaoNasPalavras(int codInstrucao, int parametro){
 				(* novo).prox = (* anterior).prox;
 				(* anterior).prox = novo;
 			}
-
 		}
 	}
 	else{
@@ -605,17 +605,28 @@ void adicionaInstrucaoNasPalavras(int codInstrucao, int parametro){
 Endereco retornaEnderecoParaInstrucao(char * parametro){
 	Endereco endereco;
 	RotuloEndereco * rotuloEndereco;
+	Simbolo * simbolo;
 
 	if(parametro != NULL){
 
-		if(strlen(parametro) > 2 && parametro[0] == 'm' && parametro[0] == '('){
+		simbolo = retornaSimbolo(parametro);
+		if(simbolo != NULL){
+			endereco.linha = (* simbolo).valor;
+			endereco.isEsquerda = 1;
+		}
+		else if(strlen(parametro) > 2 && parametro[0] == 'm' && parametro[1] == '('){
 			endereco.linha = retornaNumeroSemFormatacao(parametro);
 			endereco.isEsquerda = 1;
 		}
 		else{
 			rotuloEndereco = retornaRotuloEndereco(parametro);
-			endereco.linha = (* rotuloEndereco).endereco.linha;
-			endereco.isEsquerda = (* rotuloEndereco).endereco.isEsquerda;
+			if(rotuloEndereco == NULL){
+				printf("Parametro incorreto: %s\n", parametro);
+			}
+			else{
+				endereco.linha = (* rotuloEndereco).endereco.linha;
+				endereco.isEsquerda = (* rotuloEndereco).endereco.isEsquerda;
+			}
 		}
 	}
 	return endereco;
@@ -734,7 +745,7 @@ void processaInstrucao(int instrucaoId, char * parametro){
 		/*MUL M(X)*/
 		case 12:
 		/*DIV M(X)*/
-		case 13:	
+		case 13:
 			codInstrucao = retornaCodigoInstrucaoSimples(instrucaoId);
 			endereco = retornaEnderecoParaInstrucao(parametro);
 			break;
@@ -792,32 +803,31 @@ void processaLinhas(char ** controleLinhas, int qtdLinhas){
 
 	int i, diretivaId, instrucaoId;
 	char * linhaQuebrada;
-	
-	mapaRotulosEnderecos = NULL;
 
 	for(i = 0; i < qtdLinhas; i++){
 
 		linhaQuebrada = strtok(controleLinhas[i], separadores);
 		
 		if(linhaQuebrada != NULL){
-			stringToLower(linhaQuebrada);
 
 			/*Se for rotulo, nao faz nada, apenas vai para o proximo item da linha*/
-			if(linhaQuebrada[strlen(linhaQuebrada) - 1] == ':'){ 
+			if(linhaQuebrada[strlen(linhaQuebrada) - 1] == ':'){
 				linhaQuebrada = strtok(NULL, separadores);
 			}
 			/*Se for diretiva*/
-			else if(linhaQuebrada != NULL && linhaQuebrada[0] == '.'){
+			if(linhaQuebrada != NULL && linhaQuebrada[0] == '.'){
 				diretivaId = isDiretiva(&linhaQuebrada[1]);
-				linhaQuebrada = strtok(NULL, separadores);
-				stringToLower(linhaQuebrada);
-				adicionaDiretiva(diretivaId, linhaQuebrada);
+
+				//.set foi processado na primeira
+				if(diretivaId != 4){
+					linhaQuebrada = strtok(NULL, separadores);
+					adicionaDiretiva(diretivaId, linhaQuebrada);
+				}
 			}
 			/*Se for instrucao*/
-			else if(linhaQuebrada != NULL){ 
+			else if(linhaQuebrada != NULL){
 				instrucaoId = isInstrucao(linhaQuebrada);
 				linhaQuebrada = strtok(NULL, separadores);
-				stringToLower(linhaQuebrada);
 				processaInstrucao(instrucaoId, linhaQuebrada);
 			}
 		}
@@ -855,6 +865,7 @@ int main(int argc, char *argv[]){
 	controleLinhas = NULL;
 	posicaoMemoriaAtual.linha = 0;
 	posicaoMemoriaAtual.isEsquerda = 1;
+	mapaRotulosEnderecos = NULL;
 
     if (argc <= 1) {
 	    printf("Informe pelo menos um arquivo de entrada.\n");
@@ -862,11 +873,8 @@ int main(int argc, char *argv[]){
     }
 
     read_ASM_file(argv[1], &codigoAssembly, &controleLinhas, &qtdLinhas);
-
     mapeaRotulosEDiretivaSet(controleLinhas, qtdLinhas);
-    
-    //processaLinhas(controleLinhas, qtdLinhas);
-
+    processaLinhas(controleLinhas, qtdLinhas);
 
     liberaMapasDaMemoria();
     free(codigoAssembly);

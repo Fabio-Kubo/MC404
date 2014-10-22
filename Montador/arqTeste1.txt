@@ -1,5 +1,5 @@
 .set INICIO 0x000
-.org INICIO
+.org 0x000
 laco: 
 ld var_x
 SUB const1
