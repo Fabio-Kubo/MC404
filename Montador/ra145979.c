@@ -562,28 +562,34 @@ void adicionaDiretiva(int diretivaId, char * parametro){
 
 void adicionaInstrucaoNasPalavras(int codInstrucao, int parametro){
 
-	Palavra * anterior, * novo;
+	Palavra * anterior, * novo, * aux;
 	
-	if(palavras != NULL){
-		
+	if(palavras == NULL){
+		palavras = alocaPalavraComInstrucaoEsq(codInstrucao, parametro);
+	}
+	else{
+
+		aux = palavras;
 		anterior = NULL;
-		while((* palavras).linha < posicaoMemoriaAtual.linha){
-			anterior = palavras;
-			palavras++;
+		
+		while(aux != NULL && (* aux).linha < posicaoMemoriaAtual.linha){
+			anterior = aux;
+			aux = (* aux).prox;
 		}
 
-		if((* palavras).linha == posicaoMemoriaAtual.linha){
+		if(aux != NULL && (* aux).linha == posicaoMemoriaAtual.linha){
 
 			if(posicaoMemoriaAtual.isEsquerda == 1){
-				(* palavras).instrucaoEsq = codInstrucao;
-				(* palavras).parametroEsq = parametro;
+				(* aux).instrucaoEsq = codInstrucao;
+				(* aux).parametroEsq = parametro;
 			}
 			else{
-				(* palavras).instrucaoDir = codInstrucao;
-				(* palavras).parametroDir = parametro;
+				(* aux).instrucaoDir = codInstrucao;
+				(* aux).parametroDir = parametro;
 			}
 		}
 		else{
+
 			novo = alocaPalavraComInstrucaoEsq(codInstrucao, parametro);
 		 
 			if (anterior == NULL){
@@ -595,10 +601,6 @@ void adicionaInstrucaoNasPalavras(int codInstrucao, int parametro){
 				(* anterior).prox = novo;
 			}
 		}
-	}
-	else{
-
-		palavras = alocaPalavraComInstrucaoEsq(codInstrucao, parametro);
 	}
 }
 
@@ -834,10 +836,11 @@ void processaLinhas(char ** controleLinhas, int qtdLinhas){
 	}
 }
 
-void liberaMapasDaMemoria(){
+void liberaMemoriaDasEstruturas(){
 
 	Simbolo * auxSimbolo;
 	RotuloEndereco * auxRotulo;
+	Palavra * aux;
 
 	while(mapaSimbolos != NULL){
 		auxSimbolo = (* mapaSimbolos).prox;
@@ -851,6 +854,12 @@ void liberaMapasDaMemoria(){
 		free((* mapaRotulosEnderecos).rotulo);
 		free(mapaRotulosEnderecos);
 		mapaRotulosEnderecos = auxRotulo;
+	}
+
+	while(palavras != NULL){
+		aux = (* palavras).prox;
+		free(palavras);
+		palavras = aux;
 	}
 }
 
@@ -876,7 +885,7 @@ int main(int argc, char *argv[]){
     mapeaRotulosEDiretivaSet(controleLinhas, qtdLinhas);
     processaLinhas(controleLinhas, qtdLinhas);
 
-    liberaMapasDaMemoria();
+    liberaMemoriaDasEstruturas();
     free(codigoAssembly);
     free(controleLinhas);
     return 0;
