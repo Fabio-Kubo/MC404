@@ -7,6 +7,6 @@ jmp laco
 
 .org 0x100
 var_x:
-.word 00 00 00 00 09
+.word 9
 const1:
-.word 00 00 00 00 01
+.word 1
