@@ -914,7 +914,7 @@ void processamentoCodigoPrincipal(char ** controleLinhas, int qtdLinhas){
 				linhaQuebrada = strtok(NULL, separadores);
 				processaInstrucao(instrucaoId, linhaQuebrada);
 			}
-		}
+			}
 	}
 }
 
@@ -961,11 +961,104 @@ void liberaMemoriaDasEstruturas(){
 	}
 }
 
+char * retornaHexadecimalComZerosAEsquerda(int numero, int tamanho){
+
+	char * hexaFormatado, * auxNumero;
+	int iAuxNumero, iNumeroFormatado;
+
+	hexaFormatado = alocaVetorChar(tamanho + 1);
+	auxNumero = alocaVetorChar(tamanho + 1);
+
+	sprintf(auxNumero, "%X\n", numero);
+
+	iAuxNumero = strlen(auxNumero) - 1;
+	for (iNumeroFormatado = tamanho - 1; iNumeroFormatado > 0; iNumeroFormatado--){
+		
+		if(iAuxNumero < 0){
+			hexaFormatado[iNumeroFormatado] = '0';
+		}
+		else{
+			hexaFormatado[iNumeroFormatado] = auxNumero[iAuxNumero];
+			iAuxNumero--;
+		}
+	}
+
+	hexaFormatado[tamanho] = '\0';
+
+	free(auxNumero);
+
+	return hexaFormatado;
+}
+
+void imprimeArquivo(FILE * arqSaida){
+
+	Palavra * aux;
+	char * linhaMapaFormatado, * numeroHexadecimal;
+	int iLinhaMapaFormatado, iNumeroHexa;
+	aux = palavras;
+	linhaMapaFormatado = alocaVetorChar(14);
+	numeroHexadecimal = alocaVetorChar(11);
+
+	while(aux != NULL){
+
+		if((* aux).isQuarentaBits == 1){
+
+			sprintf(numeroHexadecimal, "%X\n", (* aux).instrucaoEsq);
+			iLinhaMapaFormatado = 12;
+
+			for (iLinhaMapaFormatado = 12, iNumeroHexa = strlen(numeroHexadecimal) - 1; iLinhaMapaFormatado > 0; iLinhaMapaFormatado--){
+
+				if(iLinhaMapaFormatado == 2 || iLinhaMapaFormatado == 6|| iLinhaMapaFormatado == 9){
+					linhaMapaFormatado[iLinhaMapaFormatado] = ' ';
+				}
+				else if(iNumeroHexa < 0){
+					linhaMapaFormatado[iLinhaMapaFormatado] = '0';
+				}
+				else{
+					linhaMapaFormatado[iLinhaMapaFormatado] = numeroHexadecimal[iNumeroHexa];
+					iNumeroHexa --;
+				}
+			}
+
+			linhaMapaFormatado[13] = '\0';
+		}
+		else{
+			numeroHexadecimal = retornaHexadecimalComZerosAEsquerda((* aux).instrucaoEsq, 2);
+			strcat(linhaMapaFormatado, numeroHexadecimal);
+			free(numeroHexadecimal);
+			
+			strcat(linhaMapaFormatado, " ");
+			
+			numeroHexadecimal = retornaHexadecimalComZerosAEsquerda((* aux).parametroEsq, 3);
+			strcat(linhaMapaFormatado, numeroHexadecimal);
+			free(numeroHexadecimal);
+
+			strcat(linhaMapaFormatado, " ");
+			
+			numeroHexadecimal = retornaHexadecimalComZerosAEsquerda((* aux).instrucaoDir, 2);
+			strcat(linhaMapaFormatado, numeroHexadecimal);
+			free(numeroHexadecimal);
+			
+			strcat(linhaMapaFormatado, " ");
+			
+			numeroHexadecimal = retornaHexadecimalComZerosAEsquerda((* aux).parametroDir, 3);
+			strcat(linhaMapaFormatado, numeroHexadecimal);
+			free(numeroHexadecimal);
+		}
+
+		aux = (* aux).prox;
+
+		printf("%X ", (* aux).linha);
+		printf("%s\n", linhaMapaFormatado);
+	}
+}
+
 int main(int argc, char *argv[]){
 
-	char * codigoAssembly;
+	char * codigoAssembly,* nomeArqSaida;
 	char ** controleLinhas;
 	int qtdLinhas;
+	FILE * arqSaida;
 
 	qtdLinhas = 0;
 	codigoAssembly = NULL;
@@ -980,12 +1073,28 @@ int main(int argc, char *argv[]){
         exit(EXIT_FAILURE);
     }
 
+    if(argc == 2){
+    	nomeArqSaida = alocaVetorChar(strlen(argv[1]) + 5);
+    	strcpy(nomeArqSaida, argv[1]);
+    	strcat(nomeArqSaida, ".hex\0");
+    }
+    else{
+    	nomeArqSaida = argv[2];
+    }
+
     read_ASM_file(argv[1], &codigoAssembly, &controleLinhas, &qtdLinhas);
     mapeaRotulosEDiretivaSet(controleLinhas, qtdLinhas);
+    printf("Quantidade linhas: %d\n", qtdLinhas);
     processamentoCodigoPrincipal(controleLinhas, qtdLinhas);
+    arqSaida = fopen(nomeArqSaida,"w");
+    
+    //imprimeArquivo(arqSaida);
 
-    imprimePalavras();
+    imprimePalavras();	
+
+    fclose(arqSaida);
     liberaMemoriaDasEstruturas();
+    free(nomeArqSaida);
     free(codigoAssembly);
     free(controleLinhas);
     return 0;
