@@ -64,6 +64,8 @@ char ** retornaControleLinhas(char * codigoAssembly, int * qtdLinhas){
 		}
 	}
 
+	(* qtdLinhas)++; //conta-se a ultima linha
+
 	return controleLinhas;
 }
 

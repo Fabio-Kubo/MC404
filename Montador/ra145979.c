@@ -995,18 +995,17 @@ void imprimeArquivo(FILE * arqSaida){
 	Palavra * aux;
 	char * linhaMapaFormatado, * numeroHexadecimal;
 	int iLinhaMapaFormatado, iNumeroHexa;
-	aux = palavras;
 	linhaMapaFormatado = alocaVetorChar(14);
-	numeroHexadecimal = alocaVetorChar(11);
 
+	aux = palavras;
 	while(aux != NULL){
 
 		if((* aux).isQuarentaBits == 1){
-
+			numeroHexadecimal = alocaVetorChar(11);
 			sprintf(numeroHexadecimal, "%X\n", (* aux).instrucaoEsq);
-			iLinhaMapaFormatado = 12;
 
-			for (iLinhaMapaFormatado = 12, iNumeroHexa = strlen(numeroHexadecimal) - 1; iLinhaMapaFormatado > 0; iLinhaMapaFormatado--){
+			iNumeroHexa = strlen(numeroHexadecimal) - 1;
+			for (iLinhaMapaFormatado = 12; iLinhaMapaFormatado > 0; iLinhaMapaFormatado--){
 
 				if(iLinhaMapaFormatado == 2 || iLinhaMapaFormatado == 6|| iLinhaMapaFormatado == 9){
 					linhaMapaFormatado[iLinhaMapaFormatado] = ' ';
@@ -1021,6 +1020,7 @@ void imprimeArquivo(FILE * arqSaida){
 			}
 
 			linhaMapaFormatado[13] = '\0';
+			free(numeroHexadecimal);
 		}
 		else{
 			numeroHexadecimal = retornaHexadecimalComZerosAEsquerda((* aux).instrucaoEsq, 2);
@@ -1046,11 +1046,11 @@ void imprimeArquivo(FILE * arqSaida){
 			free(numeroHexadecimal);
 		}
 
+		fprintf(arqSaida, "%s ", retornaHexadecimalComZerosAEsquerda((* aux).linha, 3));
+		fprintf(arqSaida, "%s\n", linhaMapaFormatado);
 		aux = (* aux).prox;
-
-		printf("%X ", (* aux).linha);
-		printf("%s\n", linhaMapaFormatado);
 	}
+		free(linhaMapaFormatado);
 }
 
 int main(int argc, char *argv[]){
@@ -1084,13 +1084,12 @@ int main(int argc, char *argv[]){
 
     read_ASM_file(argv[1], &codigoAssembly, &controleLinhas, &qtdLinhas);
     mapeaRotulosEDiretivaSet(controleLinhas, qtdLinhas);
-    printf("Quantidade linhas: %d\n", qtdLinhas);
     processamentoCodigoPrincipal(controleLinhas, qtdLinhas);
     arqSaida = fopen(nomeArqSaida,"w");
     
-    //imprimeArquivo(arqSaida);
+    imprimeArquivo(arqSaida);
 
-    imprimePalavras();	
+    //imprimePalavras();	
 
     fclose(arqSaida);
     liberaMemoriaDasEstruturas();
