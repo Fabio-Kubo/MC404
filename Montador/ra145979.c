@@ -1002,10 +1002,12 @@ void imprimeArquivo(FILE * arqSaida){
 
 		if((* aux).isQuarentaBits == 1){
 			numeroHexadecimal = alocaVetorChar(11);
-			sprintf(numeroHexadecimal, "%X\n", (* aux).instrucaoEsq);
+			sprintf(numeroHexadecimal, "%X", (* aux).instrucaoEsq);
+			printf("TEste: %s\n", numeroHexadecimal);
 
 			iNumeroHexa = strlen(numeroHexadecimal) - 1;
-			for (iLinhaMapaFormatado = 12; iLinhaMapaFormatado > 0; iLinhaMapaFormatado--){
+			printf("TEste tamanho: %d\n", iNumeroHexa);
+			for (iLinhaMapaFormatado = 12; iLinhaMapaFormatado >= 0; iLinhaMapaFormatado--){
 
 				if(iLinhaMapaFormatado == 2 || iLinhaMapaFormatado == 6|| iLinhaMapaFormatado == 9){
 					linhaMapaFormatado[iLinhaMapaFormatado] = ' ';
