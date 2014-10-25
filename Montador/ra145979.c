@@ -18,7 +18,7 @@ typedef struct RotuloEndereco{
 
 typedef struct Simbolo{
 	char * nome;
-	int valor;
+	char * valor;
 	struct Simbolo * prox;
 } Simbolo;
 
@@ -29,7 +29,7 @@ typedef struct Palavra{
 	int instrucaoDir;
 	int parametroDir;
 	int isQuarentaBits;
-	unsigned long long int valor;
+	char * valorQuarentaBits;
 	struct Palavra * prox;
 } Palavra;
 
@@ -167,6 +167,17 @@ void stringToLower(char * string){
 	}
 }
 
+void stringToUpper(char * string){
+	int i;
+
+	if(string != NULL){
+		
+		for (i = 0; string[i] != '\0'; i++) {
+			string[i] = toupper(string[i]);
+		}
+	}
+}
+
 void adicionaRotulo(char * novoRotulo){
 
 	RotuloEndereco * novoRotuloEndereco, * ultimoRotulo;
@@ -196,7 +207,7 @@ void adicionaRotulo(char * novoRotulo){
 	}
 }
 
-void adicionaSimbolo(char * nomeSimbolo, int valor){
+void adicionaSimbolo(char * nomeSimbolo, char * valor){
 
 	Simbolo * novoSimbolo, * ultimoSimbolo;
 
@@ -222,7 +233,7 @@ void adicionaSimbolo(char * nomeSimbolo, int valor){
 	}
 }
 
-void adicionaPalavra(int instrucaoEsq, int parametroEsq, int instrucaoDir, int parametroDir, int isQuarentaBits, unsigned long long int valor){
+void adicionaPalavra(int instrucaoEsq, int parametroEsq, int instrucaoDir, int parametroDir, int isQuarentaBits, char * valor){
 
 	Palavra * novaPalavra, * aux, * anterior; 
 	novaPalavra = alocaPalavra();
@@ -232,7 +243,7 @@ void adicionaPalavra(int instrucaoEsq, int parametroEsq, int instrucaoDir, int p
 	(* novaPalavra).instrucaoDir = instrucaoDir;
 	(* novaPalavra).parametroDir = parametroDir;
 	(* novaPalavra).isQuarentaBits = isQuarentaBits;
-	(* novaPalavra).valor = valor;
+	(* novaPalavra).valorQuarentaBits = valor;
 	(* novaPalavra).prox = NULL;
 
 	if(palavras == NULL){
@@ -301,29 +312,6 @@ void validaEnderecoPalavra(int decimal){
 
 int toInt(char * numeroString) {
 	int tamanho, numero;
-	
-	numero = 0;
-	if(strlen(numeroString) > 2 && numeroString[0] == '0' && numeroString[1] == 'x'){
-
-		numeroString += 2;
-		tamanho = strlen(numeroString);
-
-		while (numeroString[0] != '\0'){
-			tamanho--;
-			numero+= hexaToInt(numeroString[0]) * pow(16, tamanho);
-			numeroString++;
-		}
-	}
-	else{
-		numero = atoi(numeroString);
-	}
- return numero;
-}
-
-unsigned long long int toLongLongInt(char * numeroString) {
-	int tamanho;
-
-	unsigned long long int numero;
 	
 	numero = 0;
 	if(strlen(numeroString) > 2 && numeroString[0] == '0' && numeroString[1] == 'x'){
@@ -565,7 +553,7 @@ void processamentoInicialDiretivas(int diretivaId, char * parametro){
 			printf(".set %s\n", parametro);
 			nomeSimbolo = parametro;
 			parametro = strtok(NULL, separadores);
-			adicionaSimbolo(nomeSimbolo, toInt(parametro));
+			adicionaSimbolo(nomeSimbolo, parametro);
 			break;
 		default:
 			printf("Diretiva incorreta\n");
@@ -617,40 +605,83 @@ void mapeaRotulosEDiretivaSet(char ** controleLinhas, int qtdLinhas){
 	}
 }
 
-unsigned long long int retornaIntParametro(char * parametro){
+/*Metodo que formata o numero, colocando 0 a esquerda
+e separando por espacos para ficar no padrao: DD DDD DD DDD*/
+void formataHexadecimalQuarentaBits(char * saida, char * hexadecimalString){
+	int i, iEntrada;
 
-	unsigned long long int valor = 0;
-	RotuloEndereco * rotuloEndereco;
-	Simbolo * simbolo;
+	stringToUpper(hexadecimalString);
 
-	if(parametro == NULL){
-		printf("Erro no processamento do parametro\n");
-		exit(EXIT_FAILURE);
-	}
+	iEntrada = strlen(hexadecimalString) - 1;
 
-	simbolo = retornaSimbolo(parametro);
-	if(simbolo != NULL){
-		valor = (* simbolo).valor;
-	}
-	else{
-
-		rotuloEndereco = retornaRotuloEndereco(parametro);
+	for (i = 12; i >= 0; i--){
 		
-		if(rotuloEndereco != NULL){
-			valor = (* rotuloEndereco).endereco.linha;
+		if(i == 2 || i == 6|| i == 9){
+			saida[i] = ' ';
+		}
+		else if(iEntrada < 0){
+			saida[i] = '0';
 		}
 		else{
-			valor = toInt(parametro);
+			saida[i] = hexadecimalString[iEntrada];
+			iEntrada--;
 		}
+	}
+}
 
+unsigned long long int retornaMaiorValorHexadecimal40Bits(){
+	return 1099511627775;
+}
+
+char * decimalToHexadecimal(char * numeroDecimal){
+	char * hexadecimal;
+	unsigned long long int n;
+	
+	hexadecimal = alocaVetorChar(11);
+	
+	if(numeroDecimal[0] != '-'){
+		n = strtoull(numeroDecimal, NULL, 10);
+		sprintf(hexadecimal, "%llX", n);
+	}
+	else{
+		n = strtoull(&numeroDecimal[1], NULL, 10);
+		n = retornaMaiorValorHexadecimal40Bits() - n + 1;
+		sprintf(hexadecimal, "%llX", n);
 	}
 
-	return valor;
+	return hexadecimal;
+}
+
+char * toHexadecimalStringQuarentaBits(char * numeroString){
+	
+	char * hexadecimalString, * aux;
+
+	hexadecimalString = alocaVetorChar(14);
+
+	if(strlen(numeroString) > 2 && numeroString[0] == '0' && numeroString[1] == 'x'){
+		numeroString += 2; //ignora os "0x" inicial
+		formataHexadecimalQuarentaBits(hexadecimalString, numeroString);
+	}
+	else if (strlen(numeroString) > 2 && numeroString[0] == '0' && numeroString[1] == 'o'){
+		//TODO
+	}
+	else if (strlen(numeroString) > 2 && numeroString[0] == '0' && numeroString[1] == 'b'){
+		//TODO
+	}
+	else{
+		aux = decimalToHexadecimal(numeroString);
+		formataHexadecimalQuarentaBits(hexadecimalString, aux);
+		free(aux);
+	}
+	hexadecimalString[13] = '\0';
+	
+	return hexadecimalString;	
 }
 
 void processaDiretiva(int diretivaId, char * parametro){
 
 	int linha, i, aux;
+	char * valorQuarentaBits;
 
 	switch(diretivaId){
 		/*org*/
@@ -668,14 +699,14 @@ void processaDiretiva(int diretivaId, char * parametro){
 			parametro = strtok(NULL, separadores);
 			
 			for (i = 0; i < aux; i++){
-				adicionaPalavra(0, 0, 0, 0, 1, retornaIntParametro(parametro));
+				valorQuarentaBits = toHexadecimalStringQuarentaBits(parametro);
+				adicionaPalavra(0, 0, 0, 0, 1, valorQuarentaBits);
+				atualizaPosicaoMemoria(posicaoMemoriaAtual.linha + 1,1);
 			}
-			linha = posicaoMemoriaAtual.linha + aux;
-			atualizaPosicaoMemoria(linha, 1);
 			break;
 		/*word*/
 		case 3:
-			adicionaPalavra(0, 0, 0, 0, 1, retornaIntParametro(parametro));
+			adicionaPalavra(0, 0, 0, 0, 1, toHexadecimalStringQuarentaBits(parametro));
 			linha = posicaoMemoriaAtual.linha + 1;
 			atualizaPosicaoMemoria(linha, 1);
 			break;
@@ -733,7 +764,7 @@ Endereco retornaEnderecoParametro(char * parametro){
 
 	simbolo = retornaSimbolo(parametro);
 	if(simbolo != NULL){
-		endereco.linha = (* simbolo).valor;
+		endereco.linha = toInt((* simbolo).valor);
 		endereco.isEsquerda = 1;
 	}
 	else if(strlen(parametro) > 2 && parametro[0] == 'm' && parametro[1] == '('){
@@ -963,11 +994,16 @@ void imprimePalavras(){
 
 	while(aux != NULL){
 		printf("%X ", (* aux).linha);
-		printf("%d ", (* aux).instrucaoEsq);
-		printf("%X ", (* aux).parametroEsq);
-		printf("%X ", (* aux).instrucaoDir);
-		printf("%X\n", (* aux).parametroDir);
 
+		if((* aux).isQuarentaBits == 1){
+			printf("%s\n", (* aux).valorQuarentaBits);
+		}
+		else{
+			printf("%d ", (* aux).instrucaoEsq);
+			printf("%X ", (* aux).parametroEsq);
+			printf("%X ", (* aux).instrucaoDir);
+			printf("%X\n", (* aux).parametroDir);
+		}
 		aux = (* aux).prox;
 	}
 }
@@ -1032,7 +1068,6 @@ void imprimeArquivo(FILE * arqSaida){
 
 	Palavra * aux;
 	char * linhaMapaFormatado, * numeroHexadecimal, * numeroLinha;
-	int iLinhaMapaFormatado, iNumeroHexa;
 	linhaMapaFormatado = alocaVetorChar(14);
 	linhaMapaFormatado[0] = '\0';
 
@@ -1040,31 +1075,14 @@ void imprimeArquivo(FILE * arqSaida){
 	while(aux != NULL){
 
 		if((* aux).isQuarentaBits == 1){
-			numeroHexadecimal = alocaVetorChar(11);
-			sprintf(numeroHexadecimal, "%X", (* aux).instrucaoEsq);
-
-			iNumeroHexa = strlen(numeroHexadecimal) - 1;
-			
-			for (iLinhaMapaFormatado = 12; iLinhaMapaFormatado >= 0; iLinhaMapaFormatado--){
-
-				if(iLinhaMapaFormatado == 2 || iLinhaMapaFormatado == 6|| iLinhaMapaFormatado == 9){
-					linhaMapaFormatado[iLinhaMapaFormatado] = ' ';
-				}
-				else if(iNumeroHexa < 0){
-					linhaMapaFormatado[iLinhaMapaFormatado] = '0';
-				}
-				else{
-					linhaMapaFormatado[iLinhaMapaFormatado] = numeroHexadecimal[iNumeroHexa];
-					iNumeroHexa --;
-				}
-			}
-
-			linhaMapaFormatado[13] = '\0';
-			free(numeroHexadecimal);
+			numeroLinha = retornaHexadecimalComZerosAEsquerda((* aux).linha, 3);
+			fprintf(arqSaida, "%s ", numeroLinha);
+			free(numeroLinha);
+			fprintf(arqSaida, "%s\n", (* aux).valorQuarentaBits);
+			free((* aux).valorQuarentaBits);
 		}
 		else{
 
-			printf("Onde ta dando pau A\n");
 			numeroHexadecimal = retornaHexadecimalComZerosAEsquerda((* aux).instrucaoEsq, 2);
 
 			strcat(linhaMapaFormatado, numeroHexadecimal);
@@ -1072,7 +1090,6 @@ void imprimeArquivo(FILE * arqSaida){
 			
 			strcat(linhaMapaFormatado, " ");
 			
-			printf("Onde ta dando pau B\n");
 			numeroHexadecimal = retornaHexadecimalComZerosAEsquerda((* aux).parametroEsq, 3);
 			strcat(linhaMapaFormatado, numeroHexadecimal);
 			free(numeroHexadecimal);
@@ -1088,12 +1105,14 @@ void imprimeArquivo(FILE * arqSaida){
 			numeroHexadecimal = retornaHexadecimalComZerosAEsquerda((* aux).parametroDir, 3);
 			strcat(linhaMapaFormatado, numeroHexadecimal);
 			free(numeroHexadecimal);
+
+			numeroLinha = retornaHexadecimalComZerosAEsquerda((* aux).linha, 3);
+			fprintf(arqSaida, "%s ", numeroLinha);
+			free(numeroLinha);
+			fprintf(arqSaida, "%s\n", linhaMapaFormatado);
 		}
 
-		numeroLinha = retornaHexadecimalComZerosAEsquerda((* aux).linha, 3);
-		fprintf(arqSaida, "%s ", numeroLinha);
-		free(numeroLinha);
-		fprintf(arqSaida, "%s\n", linhaMapaFormatado);
+
 		aux = (* aux).prox;
 	}
 		free(linhaMapaFormatado);
@@ -1140,9 +1159,9 @@ int main(int argc, char *argv[]){
     processamentoCodigoPrincipal(controleLinhas, qtdLinhas);
     arqSaida = fopen(nomeArqSaida,"w");
     
-    //imprimeArquivo(arqSaida);
+    imprimeArquivo(arqSaida);
 
-    imprimePalavras();	
+    //imprimePalavras();	
 
     fclose(arqSaida);
     liberaMemoriaDasEstruturas();
