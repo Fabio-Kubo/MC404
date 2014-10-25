@@ -1,0 +1,20 @@
+# teste0x06.s - Testa a codificacao de todas as instrucoes do IAS
+
+
+	LD_MQ 
+	LD_MQMX M(0x0)
+	ST M(0x0)
+	LD M(0x0)
+	LD_N M(0x0)
+	LD_ABS M(0x0)
+	JMP rotulo
+rotulo:	JGE rotul2
+rotul2: ADD M(0x0)
+	ADD_ABS M(0x0)
+	SUB M(0x0)
+	SUB_ABS M(0x0)
+	MUL M(0x0)
+	DIV M(0x0)
+	LSH
+	RSH
+	ST_ADDR M(0x0)

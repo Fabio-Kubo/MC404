@@ -1,0 +1,21 @@
+# teste11.s - Montagem de um programa para computar a expressao
+#   (234h + 3h) * (899h + 23h)
+
+	LD_MQMX op1
+	MUL op2
+	LD_MQ
+	ST temp
+	LD_MQMX op3
+	MUL op4
+	LD_MQ
+	ADD temp
+
+# Fim -- Resultado esta em AC
+
+# Dados
+
+temp:	.word 0
+op1:	.word 0x234
+op2:	.word 3
+op3:	.word 0x899
+op4:	.word 0x23

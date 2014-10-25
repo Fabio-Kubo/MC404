@@ -1,0 +1,19 @@
+# teste07.s - Testa a codificacao de opcodes que podem mudar dependendo do
+# destino do rotulo.
+
+
+laco1:		LD var_x
+		ADD incremento
+		ST var_x
+		LD referencia
+		SUB var_x
+		JGE laco1
+		JMP fim_laco_1
+fim_laco_1:	ADD var_x
+
+# Dados
+
+var_x:		.word 0
+incremento:	.word 1
+referencia:	.word 9
+

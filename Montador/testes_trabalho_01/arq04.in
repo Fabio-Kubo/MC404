@@ -1,0 +1,18 @@
+# teste04.s - Testa criacao de rotulos e constantes em outras bases
+
+laco1:	ADD _refrigerante
+	ADD acompanhamento_
+
+.align 10
+_refrigerante: .word 49354
+	.word 0
+acompanhamento_:
+	.word 45072
+	.word 0xDAC
+	.word 511
+	.word 0
+	.word 0xFFFFFFFFFF
+	.word 0
+	.word 0x6
+	.word 0x8
+	.word 0xF

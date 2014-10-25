@@ -289,6 +289,14 @@ int hexaToInt(char c){
 	return numero;
 }
 
+void validaEnderecoPalavra(int decimal){
+
+	if(decimal < 0 || decimal > 1023){
+		printf("A memoria nao pertence ao intervalo valido - Utilize 0 - 1023\n");
+		exit(EXIT_FAILURE);
+	}
+}
+
 int toInt(char * numeroString) {
 	int tamanho, numero;
 	
@@ -306,10 +314,6 @@ int toInt(char * numeroString) {
 	}
 	else{
 		numero = atoi(numeroString);
-		if(numero < 0 || numero > 1023){
-			printf("A memoria nao pertence ao intervalo valido - Utilize 0 - 1023\n");
-			exit(EXIT_FAILURE);
-		}
 	}
  return numero;
 }
@@ -434,21 +438,23 @@ int retornaCodigoOperacao(int instrucaoId){
 
 int retornaNumeroSemFormatacao(char * numeroNoFormatoMParenteses){
 
-	char * numero;
-	int tamanho, i;
+	char * numeroString;
+	int tamanho, i, numero, j;
 
 	tamanho = strlen(numeroNoFormatoMParenteses) - 2;
-	numero = alocaVetorChar(tamanho);
+	numeroString = alocaVetorChar(tamanho);
 	
 	numeroNoFormatoMParenteses += 2;
-	for (i = 0; i < (numeroNoFormatoMParenteses[0] != ')'); i++){
-		numero[i] = numeroNoFormatoMParenteses[0];
+	for (i = 0; numeroNoFormatoMParenteses[0] != ')'; i++){
+		numeroString[i] = numeroNoFormatoMParenteses[0];
 		numeroNoFormatoMParenteses++;
 	}
 
-	numero[tamanho - 1] = '\0';
+	numeroString[i] = '\0';
 
-	return toInt(numero);
+	numero = toInt(numeroString);
+	free(numeroString);
+	return numero;
 }
 
 RotuloEndereco * retornaRotuloEndereco(char * rotulo){
@@ -476,13 +482,15 @@ void processamentoInicialDiretivas(int diretivaId, char * parametro){
 	switch(diretivaId){
 		/*org*/
 		case 0:
+			printf(".org\n");
 			atualizaPosicaoMemoria(toInt(parametro), 1);
 			break;
 		/*align*/
 		case 1:
+			printf(".align %s\n", parametro);
 			aux = toInt(parametro);
 			for (i = posicaoMemoriaAtual.linha; i < 1024; ++i){
-				if(i % aux){
+				if((i % aux) == 0){
 					break;
 				}
 			}
@@ -494,6 +502,7 @@ void processamentoInicialDiretivas(int diretivaId, char * parametro){
 			break;
 		/*wfill*/
 		case 2:
+			printf(".wfill %s\n", parametro);
 			if(posicaoMemoriaAtual.isEsquerda != 1){
 				printf("Erro na instrucao .word: posicao da memoria atual esta na instrucao da direita.\n");
 				exit(EXIT_FAILURE);
@@ -504,6 +513,7 @@ void processamentoInicialDiretivas(int diretivaId, char * parametro){
 			break;
 		/*word*/
 		case 3:
+			printf(".word %s\n", parametro);
 			if(posicaoMemoriaAtual.isEsquerda != 1){
 				printf("Erro na instrucao .word: posicao da memoria atual esta na instrucao da direita.\n");
 				exit(EXIT_FAILURE);
@@ -517,8 +527,9 @@ void processamentoInicialDiretivas(int diretivaId, char * parametro){
 
 			atualizaPosicaoMemoria(linha, 1);
 			break;
-		
+		/*.set*/
 		case 4:
+			printf(".set %s\n", parametro);
 			nomeSimbolo = parametro;
 			parametro = strtok(NULL, separadores);
 			adicionaSimbolo(nomeSimbolo, toInt(parametro));
@@ -691,28 +702,27 @@ Endereco retornaEnderecoParametro(char * parametro){
 	RotuloEndereco * rotuloEndereco;
 	Simbolo * simbolo;
 
-	if(parametro != NULL){
 
-		simbolo = retornaSimbolo(parametro);
-		if(simbolo != NULL){
-			endereco.linha = (* simbolo).valor;
-			endereco.isEsquerda = 1;
-		}
-		else if(strlen(parametro) > 2 && parametro[0] == 'm' && parametro[1] == '('){
-			endereco.linha = retornaNumeroSemFormatacao(parametro);
-			endereco.isEsquerda = 1;
+	simbolo = retornaSimbolo(parametro);
+	if(simbolo != NULL){
+		endereco.linha = (* simbolo).valor;
+		endereco.isEsquerda = 1;
+	}
+	else if(strlen(parametro) > 2 && parametro[0] == 'm' && parametro[1] == '('){
+		endereco.linha = retornaNumeroSemFormatacao(parametro);
+		endereco.isEsquerda = 1;
+	}
+	else{
+		rotuloEndereco = retornaRotuloEndereco(parametro);
+		if(rotuloEndereco == NULL){
+			printf("Parametro incorreto: %s\n", parametro);
 		}
 		else{
-			rotuloEndereco = retornaRotuloEndereco(parametro);
-			if(rotuloEndereco == NULL){
-				printf("Parametro incorreto: %s\n", parametro);
-			}
-			else{
-				endereco.linha = (* rotuloEndereco).endereco.linha;
-				endereco.isEsquerda = (* rotuloEndereco).endereco.isEsquerda;
-			}
+			endereco.linha = (* rotuloEndereco).endereco.linha;
+			endereco.isEsquerda = (* rotuloEndereco).endereco.isEsquerda;
 		}
 	}
+	
 	return endereco;
 }
 
@@ -804,7 +814,7 @@ void processaInstrucao(int instrucaoId, char * parametro){
 		printf("Instrucao Invalida\n");
 		exit(EXIT_FAILURE);
 	}
-	
+
 	switch(instrucaoId){
 		/*load m(x)*/
 		case 0:
@@ -830,8 +840,12 @@ void processaInstrucao(int instrucaoId, char * parametro){
 		case 12:
 		/*DIV M(X)*/
 		case 13:
+			printf("Nao fez nada kkk\n");
+			printf("Parametro: %s\n", parametro);
 			codInstrucao = retornaCodigoInstrucaoSimples(instrucaoId);
 			endereco = retornaEnderecoParametro(parametro);
+			printf("Codigo instrucao: %d\n", codInstrucao);
+			printf("Linha: %d\n", endereco.linha);
 			break;
 		/*JUMP*/
 		case 6:
@@ -969,10 +983,10 @@ char * retornaHexadecimalComZerosAEsquerda(int numero, int tamanho){
 	hexaFormatado = alocaVetorChar(tamanho + 1);
 	auxNumero = alocaVetorChar(tamanho + 1);
 
-	sprintf(auxNumero, "%X\n", numero);
+	sprintf(auxNumero, "%X", numero);
 
 	iAuxNumero = strlen(auxNumero) - 1;
-	for (iNumeroFormatado = tamanho - 1; iNumeroFormatado > 0; iNumeroFormatado--){
+	for (iNumeroFormatado = tamanho - 1; iNumeroFormatado >= 0; iNumeroFormatado--){
 		
 		if(iAuxNumero < 0){
 			hexaFormatado[iNumeroFormatado] = '0';
@@ -993,7 +1007,7 @@ char * retornaHexadecimalComZerosAEsquerda(int numero, int tamanho){
 void imprimeArquivo(FILE * arqSaida){
 
 	Palavra * aux;
-	char * linhaMapaFormatado, * numeroHexadecimal;
+	char * linhaMapaFormatado, * numeroHexadecimal, * numeroLinha;
 	int iLinhaMapaFormatado, iNumeroHexa;
 	linhaMapaFormatado = alocaVetorChar(14);
 
@@ -1003,10 +1017,9 @@ void imprimeArquivo(FILE * arqSaida){
 		if((* aux).isQuarentaBits == 1){
 			numeroHexadecimal = alocaVetorChar(11);
 			sprintf(numeroHexadecimal, "%X", (* aux).instrucaoEsq);
-			printf("TEste: %s\n", numeroHexadecimal);
 
 			iNumeroHexa = strlen(numeroHexadecimal) - 1;
-			printf("TEste tamanho: %d\n", iNumeroHexa);
+			
 			for (iLinhaMapaFormatado = 12; iLinhaMapaFormatado >= 0; iLinhaMapaFormatado--){
 
 				if(iLinhaMapaFormatado == 2 || iLinhaMapaFormatado == 6|| iLinhaMapaFormatado == 9){
@@ -1048,7 +1061,9 @@ void imprimeArquivo(FILE * arqSaida){
 			free(numeroHexadecimal);
 		}
 
-		fprintf(arqSaida, "%s ", retornaHexadecimalComZerosAEsquerda((* aux).linha, 3));
+		numeroLinha = retornaHexadecimalComZerosAEsquerda((* aux).linha, 3);
+		fprintf(arqSaida, "%s ", numeroLinha);
+		free(numeroLinha);
 		fprintf(arqSaida, "%s\n", linhaMapaFormatado);
 		aux = (* aux).prox;
 	}
@@ -1059,10 +1074,11 @@ int main(int argc, char *argv[]){
 
 	char * codigoAssembly,* nomeArqSaida;
 	char ** controleLinhas;
-	int qtdLinhas;
+	int qtdLinhas, alocou;
 	FILE * arqSaida;
 
 	qtdLinhas = 0;
+	alocou = 0;
 	codigoAssembly = NULL;
 	controleLinhas = NULL;
 	posicaoMemoriaAtual.linha = 0;
@@ -1079,6 +1095,7 @@ int main(int argc, char *argv[]){
     	nomeArqSaida = alocaVetorChar(strlen(argv[1]) + 5);
     	strcpy(nomeArqSaida, argv[1]);
     	strcat(nomeArqSaida, ".hex\0");
+    	alocou = 1;
     }
     else{
     	nomeArqSaida = argv[2];
@@ -1086,6 +1103,11 @@ int main(int argc, char *argv[]){
 
     read_ASM_file(argv[1], &codigoAssembly, &controleLinhas, &qtdLinhas);
     mapeaRotulosEDiretivaSet(controleLinhas, qtdLinhas);
+
+    //re-inicializa a posicao de memoria
+	posicaoMemoriaAtual.linha = 0;
+	posicaoMemoriaAtual.isEsquerda = 1;
+
     processamentoCodigoPrincipal(controleLinhas, qtdLinhas);
     arqSaida = fopen(nomeArqSaida,"w");
     
@@ -1095,8 +1117,11 @@ int main(int argc, char *argv[]){
 
     fclose(arqSaida);
     liberaMemoriaDasEstruturas();
-    free(nomeArqSaida);
-    free(codigoAssembly);
+
+    if(alocou){
+    	free(nomeArqSaida);
+    }
+	free(codigoAssembly);
     free(controleLinhas);
     return 0;
 }
