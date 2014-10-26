@@ -221,6 +221,58 @@ char * octalToHexadecimal(char * numeroOctal){
 	return hexadecimal;
 }
 
+/*Metodo que converte o numero para hexadecimal*/
+char * toHexadecimal(char * numero){
+
+	char * hexadecimal;
+
+	if(strlen(numero) > 2 && numero[0] == '0' && numero[1] == 'X'){
+		numero += 2; //ignora os "0x" inicial
+		hexadecimal = alocaVetorChar(sizeof(numero) + 1);
+		strcpy(hexadecimal, numero);
+	}
+	else if (strlen(numero) > 2 && numero[0] == '0' && numero[1] == 'O'){
+		hexadecimal = octalToHexadecimal(numero);
+	}
+	else if (strlen(numero) > 2 && numero[0] == '0' && numero[1] == 'B'){
+		hexadecimal = binarioToHexadecimal(numero);
+	}
+	else{
+		hexadecimal = decimalToHexadecimal(numero);
+	}
+	
+	return hexadecimal;	
+}
+
+char * retornaHexadecimalComZerosAEsquerda(int numero, int tamanho){
+
+	char * hexaFormatado, * auxNumero;
+	int iAuxNumero, iNumeroFormatado;
+
+	hexaFormatado = alocaVetorChar(tamanho + 1);
+	auxNumero = alocaVetorChar(tamanho + 1);
+
+	sprintf(auxNumero, "%X", numero);
+
+	iAuxNumero = strlen(auxNumero) - 1;
+	for (iNumeroFormatado = tamanho - 1; iNumeroFormatado >= 0; iNumeroFormatado--){
+		
+		if(iAuxNumero < 0){
+			hexaFormatado[iNumeroFormatado] = '0';
+		}
+		else{
+			hexaFormatado[iNumeroFormatado] = auxNumero[iAuxNumero];
+			iAuxNumero--;
+		}
+	}
+
+	hexaFormatado[tamanho] = '\0';
+
+	free(auxNumero);
+
+	return hexaFormatado;
+}
+
 /*Metodo que formata o numero, colocando 0 a esquerda
 e separando por espacos para ficar no padrao: DD DDD DD DDD*/
 char * retornaHexadecimalFormatoQuarentaBits(char * hexadecimal){
@@ -250,28 +302,3 @@ char * retornaHexadecimalFormatoQuarentaBits(char * hexadecimal){
 
 	return numeroFormatado;
 }
-
-/*Metodo que converte o numero para hexadecimal*/
-char * toHexadecimal(char * numero){
-
-	char * hexadecimal;
-
-	hexadecimal = alocaVetorChar(14);
-	if(strlen(numero) > 2 && numero[0] == '0' && numero[1] == 'X'){
-		numero += 2; //ignora os "0x" inicial
-		hexadecimal = alocaVetorChar(sizeof(numero) + 1);
-		strcpy(hexadecimal, numero);
-	}
-	else if (strlen(numero) > 2 && numero[0] == '0' && numero[1] == 'O'){
-		hexadecimal = octalToHexadecimal(numero);
-	}
-	else if (strlen(numero) > 2 && numero[0] == '0' && numero[1] == 'B'){
-		hexadecimal = binarioToHexadecimal(numero);
-	}
-	else{
-		hexadecimal = decimalToHexadecimal(numero);
-	}
-	
-	return hexadecimal;	
-}
-

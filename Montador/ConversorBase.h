@@ -5,5 +5,6 @@ int hexaToInt(char c);
 int toInt(char * numeroString);
 char * toHexadecimal(char * numero);
 char * retornaHexadecimalFormatoQuarentaBits(char * hexadecimal);
+char * retornaHexadecimalComZerosAEsquerda(int numero, int tamanho);
 
 #endif

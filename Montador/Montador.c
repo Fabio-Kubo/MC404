@@ -550,9 +550,10 @@ void processaDiretiva(int diretivaId, char * parametro){
 					linhaRotulo = alocaVetorChar(5);
 					sprintf(linhaRotulo, "%d", (* rotulo).endereco.linha);
 					auxValor = toHexadecimal(linhaRotulo);
+					free(linhaRotulo);
+					
 					auxValorFormatado = retornaHexadecimalFormatoQuarentaBits(auxValor);
 					free(auxValor);
-					free(linhaRotulo);
 				}
 				else{
 					auxValor = toHexadecimal(parametro);
@@ -831,35 +832,6 @@ void liberaMemoriaDasEstruturas(){
 		free(listaPalavras);
 		listaPalavras = aux;
 	}
-}
-
-char * retornaHexadecimalComZerosAEsquerda(int numero, int tamanho){
-
-	char * hexaFormatado, * auxNumero;
-	int iAuxNumero, iNumeroFormatado;
-
-	hexaFormatado = alocaVetorChar(tamanho + 1);
-	auxNumero = alocaVetorChar(tamanho + 1);
-
-	sprintf(auxNumero, "%X", numero);
-
-	iAuxNumero = strlen(auxNumero) - 1;
-	for (iNumeroFormatado = tamanho - 1; iNumeroFormatado >= 0; iNumeroFormatado--){
-		
-		if(iAuxNumero < 0){
-			hexaFormatado[iNumeroFormatado] = '0';
-		}
-		else{
-			hexaFormatado[iNumeroFormatado] = auxNumero[iAuxNumero];
-			iAuxNumero--;
-		}
-	}
-
-	hexaFormatado[tamanho] = '\0';
-
-	free(auxNumero);
-
-	return hexaFormatado;
 }
 
 void imprimeArquivo(char * nomeArqSaida){
