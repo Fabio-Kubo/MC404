@@ -1,5 +1,0 @@
-.org 0x000
-var_x:
-.word 9
-const1: # balbalalkdjfasdjfa
-.word 1 # balbalalkdjfasdjfa
