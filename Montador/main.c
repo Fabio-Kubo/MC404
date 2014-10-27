@@ -30,7 +30,7 @@ int main(int argc, char *argv[]){
     processamentoCodigoPrincipal(controleLinhas, qtdLinhas);
     
     if(argc == 2){
-        nomeArqSaida = retornaNomeSaida(argv[1]);
+        nomeArqSaida = retornaNomeArqSaida(argv[1]);
     	imprimeArquivo(nomeArqSaida);
         free(nomeArqSaida);
     }

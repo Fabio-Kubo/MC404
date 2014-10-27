@@ -79,11 +79,36 @@ void validaTamanhoNomeRotulo(char * nmRotulo){
 	}
 }
 
+void validaCaracteresRotuloOuSimbolo(char * nmRotulo){
+	
+	int codAsc, i;
+
+	if(isdigit(nmRotulo[0])){
+		printf("Erro: rotulo e simbolo nao podem iniciar com numero. Digitado: %s\n", nmRotulo);
+		exit(EXIT_FAILURE);
+	}
+	else{
+
+		for (i = 0; i < strlen(nmRotulo); i++){
+			
+			if(!isdigit(nmRotulo[i])){
+				codAsc = nmRotulo[i];
+
+				if(nmRotulo[i] !='_' && (codAsc < 65 || codAsc > 90)){
+					printf("Erro: rotulo e simbolo so podem conter alfanumericos e underscores. Digitado: %s\n", nmRotulo);
+					exit(EXIT_FAILURE);
+				}
+			}
+		}
+	}
+}
+
 void adicionaRotulo(Rotulo * novoRotulo){
 
 	Rotulo * ultimoRotulo;
 
 	validaTamanhoNomeRotulo((* novoRotulo).nome);
+	validaCaracteresRotuloOuSimbolo((* novoRotulo).nome);
 
 	if(listaRotulos == NULL){
 		listaRotulos = novoRotulo;
@@ -137,6 +162,7 @@ void adicionaSimbolo(Simbolo * novoSimbolo){
 
 	Simbolo * ultimoSimbolo;
 
+	validaCaracteresRotuloOuSimbolo((* novoSimbolo).nome);
 	if(listaSimbolos == NULL){
 		listaSimbolos = novoSimbolo;
 	}
@@ -393,10 +419,10 @@ int retornaCodigoInstrucao(int instrucaoId){
 	return codInstrucao;
 }
 
-int retornaNumeroSemFormatacao(char * numeroNoFormatoMParenteses){
+char * retornaNumeroSemFormatacao(char * numeroNoFormatoMParenteses){
 
 	char * numeroString;
-	int tamanho, i, numero;
+	int tamanho, i;
 
 	tamanho = strlen(numeroNoFormatoMParenteses) - 2;
 	numeroString = alocaVetorChar(tamanho);
@@ -409,15 +435,14 @@ int retornaNumeroSemFormatacao(char * numeroNoFormatoMParenteses){
 
 	numeroString[i] = '\0';
 
-	numero = toInt(numeroString);
-	free(numeroString);
-	return numero;
+	return numeroString;
 }
 
 /*Metodo que calcula o endereco da palavra seguindo as regras da instrucao .Align*/
 int retornaEnderecoPalavraAlign(int numero){
 
 	int linha;
+	numero = numero == 0? 1: numero;
 	linha = posicaoMemoriaAtual.isEsquerda? posicaoMemoriaAtual.linha: posicaoMemoriaAtual.linha + 1;
 	for (; linha < 1024; linha++){
 		if((linha % numero) == 0){
@@ -432,20 +457,47 @@ int retornaEnderecoPalavraAlign(int numero){
 	return linha;
 }
 
+void validaRangeAlign(int parametro, int min, int max){
+
+	if(parametro < min || parametro > max){
+
+		printf("Erro: existe pelo menos um parametro que nao esta dentro do range permitido\n");
+		exit(EXIT_FAILURE);
+	}
+}
+
 void processamentoInicialDiretivas(int diretivaId, char * parametro){
 
-	int linha, aux;
+	int aux;
 	char * nomeSimbolo;
 	Simbolo * simbolo;
 
 	switch(diretivaId){
 		/*org*/
 		case 0:
-			atualizaPosicaoMemoriaAtual(toInt(parametro), 1);
+			if(isHexadecimal(parametro)){
+				aux = stringHexadecimalToInt(parametro);
+			}
+			else if (isBinario(parametro)){
+				aux = stringOctalToInt(parametro);
+			}
+			else if(isOctal(parametro)){
+				aux = stringBinarioToInt(parametro);
+			}
+			else{
+				aux = toInt(parametro, 0, 1023);
+			}
+			atualizaPosicaoMemoriaAtual(aux, 1);
 			break;
 		/*align*/
 		case 1:
-			aux = toInt(parametro);
+			if(isDecimal(parametro)){
+				aux = toInt(parametro, 0, 1023);
+			}
+			else{
+				printf("Erro: a instrucao .align so permite parametro na base 10\n");
+				exit(EXIT_FAILURE);
+			}
 			atualizaPosicaoMemoriaAtual(retornaEnderecoPalavraAlign(aux), 1);
 			break;
 		/*wfill*/
@@ -455,8 +507,15 @@ void processamentoInicialDiretivas(int diretivaId, char * parametro){
 				exit(EXIT_FAILURE);
 			}
 
-			linha = posicaoMemoriaAtual.linha + toInt(parametro);
-			atualizaPosicaoMemoriaAtual(linha, 1);
+			if(isDecimal(parametro)){
+				aux = toInt(parametro, 1, 1023);
+			}
+			else{
+				printf("Erro: a instrucao .wfill so permite valor na base 10 em seu primeiro parametro\n");
+				exit(EXIT_FAILURE);
+			}
+
+			atualizaPosicaoMemoriaAtual(posicaoMemoriaAtual.linha + aux, 1);
 			break;
 		/*word*/
 		case 3:
@@ -464,13 +523,16 @@ void processamentoInicialDiretivas(int diretivaId, char * parametro){
 				printf("Erro: Instrucao .word: posicao da memoria atual esta na instrucao da direita.\n");
 				exit(EXIT_FAILURE);
 			}
-			linha = posicaoMemoriaAtual.linha + 1;
-			atualizaPosicaoMemoriaAtual(linha, 1);
+			atualizaPosicaoMemoriaAtual(posicaoMemoriaAtual.linha + 1, 1);
 			break;
 		/*.set*/
 		case 4:
 			nomeSimbolo = parametro;
 			parametro = strtok(NULL, separadores);
+
+			if(isDecimal(parametro)){
+				toInt(parametro, pow(-2, 31), pow(2,31) - 1);
+			}
 			simbolo = alocaEinicializaSimbolo(nomeSimbolo, parametro);
 			adicionaSimbolo(simbolo);
 			break;
@@ -485,7 +547,6 @@ void mapeaRotulosEDiretivaSet(char ** controleLinhas, int qtdLinhas){
 	int i, diretivaId;
 	char * linhaQuebrada, * copiaLinha;
 	Rotulo * rotulo;
-
 	for(i = 0; i < qtdLinhas; i++){
 
 		if(controleLinhas[i] != NULL){
@@ -532,30 +593,45 @@ void processaDiretiva(int diretivaId, char * parametro){
 	switch(diretivaId){
 		/*org*/
 		case 0:
-			atualizaPosicaoMemoriaAtual(toInt(parametro), 1);
+
+			if(isHexadecimal(parametro)){
+				aux = stringHexadecimalToInt(parametro);
+			}
+			else if (isBinario(parametro)){
+				aux = stringOctalToInt(parametro);
+			}
+			else if(isOctal(parametro)){
+				aux = stringBinarioToInt(parametro);
+			}
+			else{
+				aux = toInt(parametro, 0, 1023);
+			}
+			atualizaPosicaoMemoriaAtual(aux, 1);
 			break;
 		/*align*/
 		case 1:
-			aux = toInt(parametro);
+			aux = toInt(parametro, 0, 1023);
 			atualizaPosicaoMemoriaAtual(retornaEnderecoPalavraAlign(aux), 1);
 			break;
 		/*wfill*/
 		case 2:
-			aux = toInt(parametro);
-			parametro = strtok(NULL, separadores);
+			aux = toInt(parametro, 1, 1023);
 
+			parametro = strtok(NULL, separadores);
 			rotulo = retornaRotulo(parametro);
 			for (i = 0; i < aux; i++){
 				if(rotulo != NULL){
 					linhaRotulo = alocaVetorChar(5);
 					sprintf(linhaRotulo, "%d", (* rotulo).endereco.linha);
 					auxValor = toHexadecimal(linhaRotulo);
-					free(linhaRotulo);
-					
 					auxValorFormatado = retornaHexadecimalFormatoQuarentaBits(auxValor);
+					free(linhaRotulo);
 					free(auxValor);
 				}
 				else{
+					if(isDecimal(parametro)){
+						toInt(parametro, pow(-2, 31), pow(2, 31) - 1); // realiza a validacao do range
+					}
 					auxValor = toHexadecimal(parametro);
 					auxValorFormatado = retornaHexadecimalFormatoQuarentaBits(auxValor);
 					free(auxValor);
@@ -567,17 +643,20 @@ void processaDiretiva(int diretivaId, char * parametro){
 			break;
 		/*word*/
 		case 3:
-			rotulo = retornaRotulo(parametro);
-
+			rotulo = retornaRotulo(parametro);;
 			if(rotulo != NULL){
 				linhaRotulo = alocaVetorChar(5);
 				sprintf(linhaRotulo, "%d", (* rotulo).endereco.linha);
 				auxValor = toHexadecimal(linhaRotulo);
 				auxValorFormatado = retornaHexadecimalFormatoQuarentaBits(auxValor);
-				free(auxValor);
 				free(linhaRotulo);
+				free(auxValor);
 			}
 			else{
+
+				if(isDecimal(parametro)){
+					toInt(parametro, 0, pow(2, 32) - 1); // realiza a validacao do range
+				}
 				auxValor = toHexadecimal(parametro);
 				auxValorFormatado = retornaHexadecimalFormatoQuarentaBits(auxValor);
 				free(auxValor);
@@ -635,17 +714,21 @@ void adicionaInstrucaoNasPalavras(int codInstrucao, int parametro){
 }
 
 Endereco retornaEnderecoParametro(char * parametro){
+	
 	Endereco endereco;
 	Rotulo * rotuloEndereco;
 	Simbolo * simbolo;
+	char * aux;
 
 	simbolo = retornaSimbolo(parametro);
 	if(simbolo != NULL){
-		endereco.linha = toInt((* simbolo).valor);
+		endereco.linha = toDecimal((* simbolo).valor);
 		endereco.isEsquerda = 1;
 	}
 	else if(strlen(parametro) > 2 && parametro[0] == 'M' && parametro[1] == '('){
-		endereco.linha = retornaNumeroSemFormatacao(parametro);
+		aux = retornaNumeroSemFormatacao(parametro);
+		endereco.linha = toDecimal(aux);
+		free(aux);
 		endereco.isEsquerda = 1;
 	}
 	else{
@@ -777,7 +860,7 @@ void processamentoCodigoPrincipal(char ** controleLinhas, int qtdLinhas){
 				linhaQuebrada = strtok(NULL, separadores);
 				processaInstrucao(instrucaoId, linhaQuebrada);
 			}
-			}
+		}
 	}
 }
 
@@ -884,7 +967,7 @@ void inicializaPosicaoMemoriaAtual(){
     posicaoMemoriaAtual.isEsquerda = 1;
 }
 
-char * retornaNomeSaida(char * nomeEntrada){
+char * retornaNomeArqSaida(char * nomeEntrada){
     
     char * nomeArqSaida;
     

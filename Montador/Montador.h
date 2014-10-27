@@ -39,6 +39,6 @@ void mapeaRotulosEDiretivaSet(char ** controleLinhas, int qtdLinhas);
 void processamentoCodigoPrincipal(char ** controleLinhas, int qtdLinhas);
 void liberaMemoriaDasEstruturas();
 void atualizaPosicaoMemoriaAtual();
-char * retornaNomeSaida(char * nomeEntrada);
+char * retornaNomeArqSaida(char * nomeEntrada);
 
 #endif
