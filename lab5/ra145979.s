@@ -18,7 +18,6 @@ _start:                       @ main
         svc 0x0               @ realiza uma chamada de sistema (syscall)
 
 
-
         mov  r0, #0           @ para armazenar valor convertido
         ldr r1, =string       @ carrega em r1 o endereco da string
         mov  r2, #0           @ iterador de loop
@@ -39,26 +38,26 @@ reset:
 
 @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
-
-        mov r2, #0             @ Inicializa contador
+        
         cmp r0, #2             @ Compara o "n" com o 2
+        movle r5, #1           @ Se for menor ou igual a 2, o resultado recebe 1 
         ble fim_laco_Fibonacci @ Se for menor ou igual a 2, ele pula para o fim
         
+        mov r2, #2             @ Inicializa contador
         mov r4, #1             @ Inicializa o aux (n - 1)
         mov r3, #1             @ Inicializa o aux (n - 2)
 
-laco_Fibonacci
-        add r5, r3, r4         @ Soma o (n - 1) com (n - 2)
+laco_Fibonacci:
+        add r5, r3, r4         @ r5  recebe a soma de (n - 1) com (n - 2)
+        add r2, r2, #1         @ Incrementa o contador
+        cmp r2, r0             @ Compara se r3 com r2
+        bge fim_laco_Fibonacci @ Se r2 >= r0, ele pula para o fim
         mov r3, r4
         mov r4, r5
-
-        cmp r2, r0             @ Compara se r3 com r2
-        bge fim_laco_Fibonacci @ Se r2 <= r0, ele pula para o fim
-        
-        add r2, r2, #1
         b laco_Fibonacci
 
 fim_laco_Fibonacci:
+        mov r0, r5             @ Copia o resultado para r0
 
 
 @@@@@@@@@@@@@@@@@@@@@@@ Valor de r0 para string binaria @@@@@@@@@@@@@@ 
@@ -100,8 +99,5 @@ set:
         svc 0x0         
 
 
-
-
 .data
-
-string:  .asciz "0000000000000000\n"  @coloca a string na memoria
+string:  .asciz "0000000000000000\n"  @coloca a st
