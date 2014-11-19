@@ -31,17 +31,19 @@ read_sonar: 			@ Le o sonar de acordo com o sonarId que é passado em r0. O reto
 
 read_sonars:
 
-	stmfd SP!, {r4, r5, lr}
-		mov r4, r0			@Copia o parametro para r4
-		mov r5, #0 			@Inicializa o contador
+	ldmfd SP!, {r7, lr}
+		mov r2, r0			@Copia o parametro para r2
+		mov r3, #0 			@Inicializa o contador
+		mov r7, #125		@Seta a função
 	loop:
-		mov r0, r5		    @Seta o radarId
-		bl read_sonar
-		str r0, [r4, #4]		@Move o resultado da funcao para o vetor r4
-		add r5, r5, #1
-		cmp r5, #15 		@Compara r5 com 15
-		bls loop
+		cmp r3, #15
+		bhi fim_loop
+		mov r0, r3		    @Seta o radarId
+		svc 0x0
+		str r0, [r2, #4]!	@Move o resultado da funcao para o vetor r2
+		add r3, r3, #1
+		b loop
 	
 	fim_loop: 
-		ldmfd SP!, {r4, r5, lr}
+		ldmfd SP!, {r7, lr}
 		mov pc, lr
