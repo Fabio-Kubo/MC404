@@ -32,23 +32,23 @@ RESET_HANDLER:
 
     @Habilita e configura o clock_src para periférico
     mov r3, #0x41
-    ldr r4, =GPT_CR
-    str r3, [r4]
+    ldr r2, =GPT_CR
+    str r3, [r2]
 
     @Zera o prescaler (GPT_PR)
     mov r3, #0
-    ldr r4, =GPT_PR
-    str r3, [r4]
+    ldr r2, =GPT_PR
+    str r3, [r2]
 
     @Configura o GPT_OCR1 com o valor que desejo contar
     mov r3, #100
-    ldr r4, = GPT_OCR1
-    str r3, [r4]
+    ldr r2, = GPT_OCR1
+    str r3, [r2]
 
     @Habilita a interrupção gravando 1 no registrador GPT_IR
     mov r3, #1
-    ldr r4, =GPT_IR 
-    str r3, [r4]
+    ldr r2, =GPT_IR 
+    str r3, [r2]
 
 SET_TZIC:
     @ Constantes para os enderecos do TZIC
@@ -105,8 +105,8 @@ IRQ_HANDLER:
 
 	@Informa ao GPT que o processador já está ciente de que ocorreu a interrupção
     mov r3, #0
-    ldr r4, = GPT_SR
-    str r3, [r4]
+    ldr r2, = GPT_SR
+    str r3, [r2]
 
     @Incrementa contador
     ldr r2, = CONTADOR
