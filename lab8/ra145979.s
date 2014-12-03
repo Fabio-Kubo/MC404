@@ -9,7 +9,6 @@ interrupt_vector:
 .org 0x18
     b IRQ_HANDLER
 
-
 .org 0x100
 .text
 
@@ -18,14 +17,11 @@ interrupt_vector:
     mov r0,#0
     str r0,[r2]
 
-    laco:
-    b laco
-
 RESET_HANDLER:
     
     @ Constantes para os enderecos do gpt
-    .set GPT_CR,             0x0FFFC000
-    .set GPT_PR,             0x53FA000
+    .set GPT_CR,             0x53FA0000
+    .set GPT_PR,             0x53FA0004
     .set GPT_OCR1,           0x53FA0010
     .set GPT_IR,             0x53FA000C
 
@@ -53,7 +49,6 @@ RESET_HANDLER:
     mov r3, #1
     ldr r4, =GPT_IR 
     str r3, [r4]
-
 
 SET_TZIC:
     @ Constantes para os enderecos do TZIC
@@ -100,6 +95,10 @@ SET_TZIC:
     msr  CPSR_c, #0x13       @ SUPERVISOR mode, IRQ/FIQ enabled
 
 
+laco:
+        b laco
+
+
 IRQ_HANDLER:
 
     .set GPT_SR,    0x53FA0008
@@ -123,4 +122,3 @@ IRQ_HANDLER:
 .org 0xFFF
 .data
 CONTADOR: .word 0 
-
