@@ -41,7 +41,7 @@ RESET_HANDLER:
     str r3, [r2]
 
     @Configura o GPT_OCR1 com o valor que desejo contar
-    mov r3, #100
+    mov r3, #64
     ldr r2, = GPT_OCR1
     str r3, [r2]
 
@@ -103,7 +103,7 @@ IRQ_HANDLER:
 
     .set GPT_SR,    0x53FA0008
 
-    @Informa ao GPT que o processador já está ciente de que ocorreu a interrupção
+	@Informa ao GPT que o processador já está ciente de que ocorreu a interrupção
     mov r3, #0
     ldr r2, = GPT_SR
     str r3, [r2]
@@ -119,7 +119,125 @@ IRQ_HANDLER:
 
     movs pc, lr
 
+
+@Constantes
+.set PSR, 0x53F84008
+
+
+@-------------------------------------------
+@ Parametro
+@    R0: Id do sonar 
+@ Retorno
+@    R0: valor da leitura do sonar ou
+@        -1 se o id for inválido.
+@-------------------------------------------
+READ_SONAR:
+
+
+
+    @Valida o id do sonar
+    cmp r0, 15
+    movhi r0, #-1
+    bhi id_invalido
+    
+    @Seta o id do sonar 
+
+    @Sinal baixo na trigger + delay
+
+    @Sinal alto na trigger + delay
+
+    @Sinal baixo na trigger
+    @delay enquanto não tiver FLAG = 1
+
+    @Pegar a informação e jogar em r0
+
+    read_sonar_fim:
+        movs pc, lr
+
+
+@-------------------------------------------
+@ Parametro
+@    R0: id do motor
+@    R1: velocidade a ser definida
+@ Retorno
+@    R0: -1 caso o identificador do motor seja inválido
+@        -2 caso a velocidade seja inválida
+@         0 caso OK
+@-------------------------------------------
+SET_MOTOR_SPEED:
+
+    @Constantes
+    .set MASCARA_MOTOR_ZERO,  #0b11111111111111111100000001111111
+    .set MASCARA_MOTOR_UM,    #0b11111111111111111111111110000000
+
+    @Valida a velocidade
+    cmp r1, #0x3f
+    movhi r0, #-2
+    bhi set_motor_speed_fim
+
+    @Valida o id do motor
+    cmp r0, #1
+    movhi r0, #-1
+    bhi set_motor_speed_fim
+
+    @Carrega o conteudo 
+    ldr r3, =PSR @Carrega o registrador PSR
+
+    beq motor_um
+
+    mov  r1, r1, LSL #12 @Desloca o valor para a posicao adequada
+    ldr r4, =MASCARA_MOTOR_ZERO @Seta a mascara do motor
+    b fim_motor_um
+
+    motor_um:
+        ldr r4, =MASCARA_MOTOR_UM @Seta a mascara do motor
+    
+    fim_motor_um:
+        and r3, r3, r4
+        orr r3, r3, r1
+
+    set_motor_speed_fim:
+        movs pc, lr
+
+SET_MOTORS_SPEED:@TODO
+
+    @Ler r0 bit por bit
+    @setar cada bit do registrador responsavel pelos motores
+    @Jogar no bit de write o valor 0
+
+    
+
+    
+    ldr r1, =PSR    @Carrega o endereço do registrador PSR
+
+    @Procedimento para pegar os ultimos 6 bits, faz uma mascara e faz um or
+
+    mov r2, #1
+
+
+
+
+    
+    movs pc, lr
+
+GET_TIME:
+    r1, =CONTADOR
+    ldr r0, [r1]
+    movs pc, lr
+
+SET_TIME:
+    r1, =CONTADOR
+    stor r0, [r1]
+    movs pc, lr
+
+SET_ALARM:  @TODO
+    movs pc, lr
+
+
+
+
+
+
 .org 0xFFF
 .data
-CONTADOR: .word 0
-
+CONTADOR: .word 0 
