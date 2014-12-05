@@ -121,8 +121,21 @@ IRQ_HANDLER:
 
 
 @Constantes
-.set PSR, 0x53F84008
+.set DR,    0x53F84000     @Data Register
+.set GDIR,  0x53F84004     @Direction Register
+.set PSR,   0x53F84008     @Pad status register - apenas para leitura
+.set MASCARA_MOTOR_ZERO,            #0b11111111111111111100000001111111
+.set MASCARA_MOTOR_UM,              #0b11111111111111111111111110000000
+.set MASCARA_MOTORES,               #0b11111111111111111100000000000000
+.set MASCARA_SONAR_MUX,             #0b10000011111111111111111111111111
+.set MASCARA_SINAL_ALTO_TRIGGER,    #0b01000000000000000000000000000000
+.set MASCARA_SINAL_BAIXO_TRIGGER,   #0b10111111111111111111111111111111
+.set MASCARA_FLAG,                  #0b10000000000000000000000000000000
+.set MASCARA_SONAR_DATA             #0b00000011111111111100000000000000
 
+DELAY:
+    mov pc, lr
+    
 
 @-------------------------------------------
 @ Parametro
@@ -133,20 +146,36 @@ IRQ_HANDLER:
 @-------------------------------------------
 READ_SONAR:
 
-
-
     @Valida o id do sonar
-    cmp r0, 15
+    cmp r0, #15
     movhi r0, #-1
-    bhi id_invalido
-    
-    @Seta o id do sonar 
+    bhi read_sonar_fim
 
-    @Sinal baixo na trigger + delay
+    @Carrega o conteudo 
+    ldr r1, =PSR @Carrega o registrador PSR
+    ldr r2, [r1]
 
+    @Seta o id do sonar + Sinal baixo na trigger
+    mov  r0, r0, LSL #26 @Desloca o valor para a posicao adequada
+    ldr r3, =MASCARA_SONAR_MUX @Seta a mascara
+    and r2, r2, r3 @Zera as posicões do id do sonar e da trigger
+
+    @Delay
+    bl DELAY
+        
     @Sinal alto na trigger + delay
+    ldr r3, =MASCARA_SINAL_ALTO_TRIGGER @Seta a mascara
+    orr r2, r2, r3 @Seta sinal alto na trigger
 
     @Sinal baixo na trigger
+    ldr r3, =MASCARA_SINAL_BAIXO_TRIGGER @Seta a mascara
+    and r2, r2, r3 @Seta sinal alto na trigger   
+
+    delay:
+    bl DELAY
+    ldr r2, [r1]
+
+
     @delay enquanto não tiver FLAG = 1
 
     @Pegar a informação e jogar em r0
@@ -160,15 +189,13 @@ READ_SONAR:
 @    R0: id do motor
 @    R1: velocidade a ser definida
 @ Retorno
-@    R0: -1 caso o identificador do motor seja inválido
+@    R0: -1 caso o id do motor seja inválido
 @        -2 caso a velocidade seja inválida
 @         0 caso OK
 @-------------------------------------------
 SET_MOTOR_SPEED:
 
-    @Constantes
-    .set MASCARA_MOTOR_ZERO,  #0b11111111111111111100000001111111
-    .set MASCARA_MOTOR_UM,    #0b11111111111111111111111110000000
+    stmfd SP!, {r4}
 
     @Valida a velocidade
     cmp r1, #0x3f
@@ -180,62 +207,105 @@ SET_MOTOR_SPEED:
     movhi r0, #-1
     bhi set_motor_speed_fim
 
-    @Carrega o conteudo 
-    ldr r3, =PSR @Carrega o registrador PSR
+    @Indica que os parametros estão OK
+    mov r0, #0
 
+    @Carrega o conteudo 
+    ldr r4, =PSR @Carrega o registrador PSR
+    ldr r3, [r4]
+
+    @Se for o motor 1, pula para sua configuraçao
     beq motor_um
 
-    mov  r1, r1, LSL #12 @Desloca o valor para a posicao adequada
-    ldr r4, =MASCARA_MOTOR_ZERO @Seta a mascara do motor
-    b fim_motor_um
+    mov  r1, r1, LSL #7 @Desloca o valor para a posicao adequada
+    ldr r2, =MASCARA_MOTOR_ZERO @Seta a mascara do motor
+    b seta_valor
 
     motor_um:
-        ldr r4, =MASCARA_MOTOR_UM @Seta a mascara do motor
+        ldr r2, =MASCARA_MOTOR_UM @Seta a mascara do motor    
     
-    fim_motor_um:
-        and r3, r3, r4
-        orr r3, r3, r1
+    seta_valor:
+        and r3, r3, r2 @Zera a posicao com a velocidade do motor e o bit de write
+        orr r3, r3, r1 @Configura a nova velocidade
+        stor r3, [r4] @Guarda o novo valor
 
     set_motor_speed_fim:
+        ldmfd SP!, {r4}
         movs pc, lr
 
+@-------------------------------------------
+@ Parametro
+@    R0: Velocidade para o motor 0.
+@    R1: Velocidade para o motor 1.
+@ Retorno
+@    R0: -1 caso a velocidade para o motor 0 seja inválida
+@        -2 caso a velocidade para o motor 1 seja inválida
+@         0 caso Ok.
+@-------------------------------------------
 SET_MOTORS_SPEED:@TODO
 
-    @Ler r0 bit por bit
-    @setar cada bit do registrador responsavel pelos motores
-    @Jogar no bit de write o valor 0
+    stmfd SP!, {r4}
 
+    @Valida a velocidade
+    cmp r0, #0x3f
+    movhi r0, #-1
+    bhi set_motors_speed_fim
+
+    @Valida a velocidade
+    cmp r1, #0x3f
+    movhi r0, #-2
+    bhi set_motors_speed_fim
+
+    @Carrega o conteudo 
+    ldr r4, =PSR @Carrega o registrador PSR
+    ldr r3, [r4]
+
+    mov  r0, r0, LSL #7 @Desloca o valor para a posicao adequada
+    ldr r2, =MASCARA_MOTORES @Carrega a mascara
+       
+    and r3, r3, r2 @Zera a posicao com as velocidades dos motores e os bits de write
     
+    orr r3, r3, r0 @Configura a nova velocidade motor 0
+    orr r3, r3, r1 @Configura a nova velocidade motor 1
+    stor r3, [r4] @Guarda o novo valor
 
-    
-    ldr r1, =PSR    @Carrega o endereço do registrador PSR
+    @Indica que os parametros estão OK
+    mov r0, #0
 
-    @Procedimento para pegar os ultimos 6 bits, faz uma mascara e faz um or
+    set_motors_speed_fim:
+        ldmfd SP!, {r4}
+        movs pc, lr
 
-    mov r2, #1
-
-
-
-
-    
-    movs pc, lr
-
+@-------------------------------------------
+@ Parametro
+@   Nenhum
+@ Retorno
+@    R0: Contador
+@-------------------------------------------
 GET_TIME:
     r1, =CONTADOR
     ldr r0, [r1]
     movs pc, lr
 
+@-------------------------------------------
+@ Parametro
+@   r0: novo valor do contador
+@ Retorno
+@    Nenhum
+@-------------------------------------------
 SET_TIME:
     r1, =CONTADOR
     stor r0, [r1]
     movs pc, lr
 
+@-------------------------------------------
+@ Parametro
+@
+@ Retorno
+@    Nenhum
+@-------------------------------------------
 SET_ALARM:  @TODO
     movs pc, lr
-
-
-
-
 
 
 .org 0xFFF
