@@ -6,6 +6,9 @@ _start:
 interrupt_vector:
 
     b RESET_HANDLER
+.org 0x08
+    b SUPERVISOR_HANDLER
+
 .org 0x18
     b IRQ_HANDLER
 
@@ -99,6 +102,35 @@ laco:
         b laco
 
 
+SUPERVISOR_HANDLER:
+    
+    cmp r7, #8
+    bleq READ_SONAR
+    b fim
+    
+    cmp r7, #9
+    bleq SET_MOTOR_SPEED
+    b fim
+    
+    cmp r7, #10
+    bleq SET_MOTORS_SPEED
+    b fim
+    
+    cmp r7, #11
+    bleq GET_TIME
+    b fim 
+    
+    cmp r7, #12
+    bleq SET_TIME
+    b fim
+
+    cmp r7, #13
+    bleq SET_ALARM
+
+    fim:
+    movs pc, lr
+
+
 IRQ_HANDLER:
 
     .set GPT_SR,    0x53FA0008
@@ -117,8 +149,6 @@ IRQ_HANDLER:
     @Corrige o lr
     sub lr, lr, #4
 
-    movs pc, lr
-
 
 @Constantes
 .set DR,    0x53F84000     @Data Register
@@ -132,6 +162,7 @@ IRQ_HANDLER:
 .set MASCARA_SINAL_BAIXO_TRIGGER,   #0b10111111111111111111111111111111
 .set MASCARA_FLAG,                  #0b10000000000000000000000000000000
 .set MASCARA_SONAR_DATA             #0b00000011111111111100000000000000
+.set MAX_ALARMS #16
 
 DELAY:
     mov pc, lr
@@ -169,7 +200,7 @@ READ_SONAR:
 
     @Sinal baixo na trigger
     ldr r3, =MASCARA_SINAL_BAIXO_TRIGGER @Seta a mascara
-    and r2, r2, r3 @Seta sinal alto na trigger   
+    and r2, r2, r3 @Seta sinal baixo na trigger   
 
     delay:
     bl DELAY
@@ -181,7 +212,7 @@ READ_SONAR:
     @Pegar a informação e jogar em r0
 
     read_sonar_fim:
-        movs pc, lr
+        mov pc, lr
 
 
 @-------------------------------------------
@@ -231,7 +262,7 @@ SET_MOTOR_SPEED:
 
     set_motor_speed_fim:
         ldmfd SP!, {r4}
-        movs pc, lr
+        mov pc, lr
 
 @-------------------------------------------
 @ Parametro
@@ -274,7 +305,7 @@ SET_MOTORS_SPEED:@TODO
 
     set_motors_speed_fim:
         ldmfd SP!, {r4}
-        movs pc, lr
+        mov pc, lr
 
 @-------------------------------------------
 @ Parametro
@@ -285,7 +316,7 @@ SET_MOTORS_SPEED:@TODO
 GET_TIME:
     r1, =CONTADOR
     ldr r0, [r1]
-    movs pc, lr
+    mov pc, lr
 
 @-------------------------------------------
 @ Parametro
@@ -296,18 +327,76 @@ GET_TIME:
 SET_TIME:
     r1, =CONTADOR
     stor r0, [r1]
-    movs pc, lr
+    mov pc, lr
 
 @-------------------------------------------
 @ Parametro
-@
+@   R0: ponteiro para função a ser chamada na ocorrência do alarme.
+@   R1: tempo do sistema. 
 @ Retorno
-@    Nenhum
+@    R0: -1 caso o número de alarmes máximo ativo no sistema seja maior do que MAX_ALARMS. 
+@        -2 caso o tempo seja menor do que o tempo atual do sistema. 
+@         0 caso contrário.
 @-------------------------------------------
 SET_ALARM:  @TODO
-    movs pc, lr
+
+    stmfd SP!, {r4}
+
+    @Incrementa QTD_ALARM
+    ldr r2, =QTD_ALARM
+    ldr r3, [r2]
+    add r3, r3, #1
+    
+    @Valida quantidade maxima
+    ldr r4, =MAX_ALARMS 
+    ldr r4, [r4]
+    cmp r3, r4
+    movhi r0, #-1     @Caso seja maior, retorna o codigo do erro em r0
+    bhi set_alarm_fim @Caso seja maior, vai para o final da funcao
+    
+    @Valida o tempo
+    ldr r4, =CONTADOR
+    ldr r4, [r4]
+    cmp r1, r4
+    movls r0, #-2       @Se for menor ou igual, seta o codigo do erro em r0 e
+    blls set_alarm_fim  @vai para o final da função
+
+
+    str r3, [r2]  @Salva o novo valor no contador
+    sub r3, r3, #1
+
+    mov r4, #0
+    mov r2 #0
+
+    calcula_posicao:
+    cmp r4, r3
+    beq fim_procura
+    add r2, r2, 4
+    add r4, r4, #1
+    b calcula_posicao
+
+    
+    salva_info_alarme:
+        
+    @Salva tempo do alarme
+    ldr r4, =ALARMES
+    add r4, r4, r2
+    stor r1, [r4]
+
+    @Salva funçao do alarme
+    ldr r4, =FUNCOES_ALARMES
+    add r4, r4, r2
+    stor r1, [r4]
+    
+    set_alarm_fim:
+    ldmfd SP!, {r4}
+    mov pc, lr
 
 
 .org 0xFFF
 .data
-CONTADOR: .word 0 
+CONTADOR:  .word 0
+QTD_ALARM: .word 0
+ALARMES:   .wfill 16 0x00
+FUNCOES_ALARMES .wfill 16 0x00
+
