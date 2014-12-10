@@ -397,6 +397,6 @@ SET_ALARM:  @TODO
 .data
 CONTADOR:  .word 0
 QTD_ALARM: .word 0
-ALARMES:   .wfill 16 0x00
+ALARMES:   .wfill 16 -1
 FUNCOES_ALARMES .wfill 16 0x00
 

@@ -73,14 +73,14 @@ void add_alarm(void (f*)(), unsigned int time);
  * Returns:
  *   the system time.
  */
-unsigned in get_time();
+unsigned int get_time();
 
 /* 
  * Sets the system time.
  * Returns:
  *   the system time.
  */
-unsigned in set_time();
+unsigned int set_time();
 
 
 #endif // API_ROBOT2_H
