@@ -1,18 +1,60 @@
 .org 0x0
 .section .iv,"a"
 
-_start:		
-
+_start:
 interrupt_vector:
-
     b RESET_HANDLER
 .org 0x08
     b SUPERVISOR_HANDLER
-
 .org 0x18
     b IRQ_HANDLER
 
+@--------------------------------------------------------
+@ Constantes para os enderecos do gpt
+@--------------------------------------------------------
+.set GPT_CR,             0x53FA0000
+.set GPT_PR,             0x53FA0004
+.set GPT_OCR1,           0x53FA0010
+.set GPT_IR,             0x53FA000C
+
+@--------------------------------------------------------
+@ Constantes para os enderecos do TZIC
+@--------------------------------------------------------
+.set TZIC_BASE,             0x0FFFC000
+.set TZIC_INTCTRL,          0x0
+.set TZIC_INTSEC1,          0x84 
+.set TZIC_ENSET1,           0x104
+.set TZIC_PRIOMASK,         0xC
+.set TZIC_PRIORITY9,        0x424
+
+@--------------------------------------------------------
+@ Constantes registradores
+@--------------------------------------------------------
+.set DR,    0x53F84000     @Data Register
+.set GDIR,  0x53F84004     @Direction Register
+.set PSR,   0x53F84008     @Pad status register - apenas para leitura
+
+@--------------------------------------------------------
+@ Mascaras
+@--------------------------------------------------------
+.set MASCARA_MOTOR_ZERO,            #0b11111111111111111100000001111111
+.set MASCARA_MOTOR_UM,              #0b11111111111111111111111110000000
+.set MASCARA_MOTORES,               #0b11111111111111111100000000000000
+.set MASCARA_SONAR_MUX,             #0b10000011111111111111111111111111
+.set MASCARA_SINAL_ALTO_TRIGGER,    #0b01000000000000000000000000000000
+.set MASCARA_SINAL_BAIXO_TRIGGER,   #0b10111111111111111111111111111111
+.set MASCARA_FLAG,                  #0b10000000000000000000000000000000
+.set MASCARA_SONAR_DATA             #0b00000011111111111100000000000000
+
+@--------------------------------------------------------
+@ Outras constantes
+@--------------------------------------------------------
+.set MAX_ALARMS #16
+
+
+.align 4
 .org 0x100
+
 .text
 
     @ Zera o contador
@@ -22,12 +64,6 @@ interrupt_vector:
 
 RESET_HANDLER:
     
-    @ Constantes para os enderecos do gpt
-    .set GPT_CR,             0x53FA0000
-    .set GPT_PR,             0x53FA0004
-    .set GPT_OCR1,           0x53FA0010
-    .set GPT_IR,             0x53FA000C
-
     @Set interrupt table base address on coprocessor 15.
     ldr r0, =interrupt_vector
     mcr p15, 0, r0, c12, c0, 0
@@ -54,13 +90,6 @@ RESET_HANDLER:
     str r3, [r2]
 
 SET_TZIC:
-    @ Constantes para os enderecos do TZIC
-    .set TZIC_BASE,             0x0FFFC000
-    .set TZIC_INTCTRL,          0x0
-    .set TZIC_INTSEC1,          0x84 
-    .set TZIC_ENSET1,           0x104
-    .set TZIC_PRIOMASK,         0xC
-    .set TZIC_PRIORITY9,        0x424
 
     @ Liga o controlador de interrupcoes
     @ R1 <= TZIC_BASE
@@ -150,19 +179,7 @@ IRQ_HANDLER:
     sub lr, lr, #4
 
 
-@Constantes
-.set DR,    0x53F84000     @Data Register
-.set GDIR,  0x53F84004     @Direction Register
-.set PSR,   0x53F84008     @Pad status register - apenas para leitura
-.set MASCARA_MOTOR_ZERO,            #0b11111111111111111100000001111111
-.set MASCARA_MOTOR_UM,              #0b11111111111111111111111110000000
-.set MASCARA_MOTORES,               #0b11111111111111111100000000000000
-.set MASCARA_SONAR_MUX,             #0b10000011111111111111111111111111
-.set MASCARA_SINAL_ALTO_TRIGGER,    #0b01000000000000000000000000000000
-.set MASCARA_SINAL_BAIXO_TRIGGER,   #0b10111111111111111111111111111111
-.set MASCARA_FLAG,                  #0b10000000000000000000000000000000
-.set MASCARA_SONAR_DATA             #0b00000011111111111100000000000000
-.set MAX_ALARMS #16
+
 
 DELAY:
     mov pc, lr
