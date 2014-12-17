@@ -66,7 +66,7 @@ void read_sonars(unsigned int *distances);
  * Returns:
  *   void
  */
-void add_alarm(void (f*)(), unsigned int time);
+void add_alarm(void (*f)(), unsigned int time);
 
 /* 
  * Reads the system time.
@@ -77,10 +77,10 @@ unsigned int get_time();
 
 /* 
  * Sets the system time.
- * Returns:
- *   the system time.
+ * Parameter: 
+ *   t: the new system time.
  */
-unsigned int set_time();
+void set_time(unsigned int t);
 
 
 #endif // API_ROBOT2_H

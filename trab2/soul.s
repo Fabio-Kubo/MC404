@@ -16,6 +16,7 @@ interrupt_vector:
 .set GPT_PR,             0x53FA0004
 .set GPT_OCR1,           0x53FA0010
 .set GPT_IR,             0x53FA000C
+.set GPT_SR,             0x53FA0008
 
 @--------------------------------------------------------
 @ Constantes para os enderecos do TZIC
@@ -36,6 +37,16 @@ interrupt_vector:
 .set VALOR_GDIR,               0b01111100000000000011111111111111
 
 @--------------------------------------------------------
+@ Constantes com os endereços das pilhas
+@--------------------------------------------------------
+.set USER_PILHA,        0x1000
+.set IRQ_PILHA,         0x2000
+.set SUPERVISOR_PILHA,  0x3000
+.set FIQ_PILHA,         0x4000
+.set ABORT_PILHA,       0x5000
+.set UNDEFINED_PILHA,   0x6000
+
+@--------------------------------------------------------
 @ Mascaras
 @--------------------------------------------------------
 .set MASCARA_MOTOR_ZERO,            0b11111111111111111100000001111111
@@ -45,7 +56,7 @@ interrupt_vector:
 .set MASCARA_SINAL_ALTO_TRIGGER,    0b01000000000000000000000000000000
 .set MASCARA_SINAL_BAIXO_TRIGGER,   0b10111111111111111111111111111111
 .set MASCARA_FLAG,                  0b10000000000000000000000000000000
-.set MASCARA_SONAR_DATA,             0b00000011111111111100000000000000
+.set MASCARA_SONAR_DATA,            0b00000011111111111100000000000000
 
 @--------------------------------------------------------
 @ Outras constantes
@@ -138,41 +149,54 @@ SET_TZIC:
     ldr r0, =REG_GDIR
     ldr r1, =VALOR_GDIR @Carrega o valor do gdir
     str r1, [r0]        @Salva o novo valor
+
+
+    @Setando as pilhas de cada modo
+    msr CPSR_c, #0xDF           @ Enter system mode, FIQ/IRQ disabled
+    ldr sp, =USER_PILHA
+
+    msr CPSR_c, #0xD2           @ Enter IRQ mode, FIQ/IRQ disabled
+    ldr sp, =IRQ_PILHA
     
+    msr CPSR_c, #0x13           @ SUPERVISOR mode, IRQ/FIQ enabled
+    ldr sp, =SUPERVISOR_PILHA
+
+    msr CPSR_c, #0xD1           @ Enter FIQ mode, FIQ/IRQ disabled
+    ldr sp, =FIQ_PILHA
+
+    msr CPSR_c, #0xD7           @ Enter abort mode, FIQ/IRQ disabled
+    ldr sp, =ABORT_PILHA
+
+@   msr CPSR_c, #0xD7B           @ Enter undefined mode, FIQ/IRQ disabled
+@   ldr sp, =UNDEFINED_PILHA
+
+    msr CPSR_c, 0x30            @ habilita modo de usuário
+    @ldr pc, =USER_CODE          @ entra no código do programa usuário
+
     msr CPSR_c, 0x30            @ habilita modo de usuário
     ldr pc, =LOCO_CODE          @ entra no código do programa usuário
-
-laco:
-        b laco
 
 
 SUPERVISOR_HANDLER:
     
     cmp r7, #8
-    bleq READ_SONAR
-    b fim
-    
+    beq READ_SONAR
+        
     cmp r7, #9
-    bleq SET_MOTOR_SPEED
-    b fim
-    
+    beq SET_MOTOR_SPEED
+        
     cmp r7, #10
-    bleq SET_MOTORS_SPEED
-    b fim
-    
+    beq SET_MOTORS_SPEED
+        
     cmp r7, #11
-    bleq GET_TIME
-    b fim 
-    
+    beq GET_TIME
+        
     cmp r7, #12
-    bleq SET_TIME
-    b fim
+    beq SET_TIME
 
     cmp r7, #13
-    bleq SET_ALARM
+    beq SET_ALARM
 
-    fim:
-    movs pc, lr
 
 @-------------------------------------------
 @ Parametro
@@ -191,8 +215,6 @@ mov pc, lr
 
 
 IRQ_HANDLER:
-
-    .set GPT_SR,    0x53FA0008
 
     @Informa ao GPT que o processador já está ciente de que ocorreu a interrupção
     mov r3, #0
@@ -228,12 +250,9 @@ IRQ_HANDLER:
     sub lr, lr, #4
 
 
-
-
 DELAY:
     mov pc, lr
     
-
 @-------------------------------------------
 @ Parametro
 @    R0: Id do sonar 
@@ -281,7 +300,7 @@ READ_SONAR:
     @Pegar a informação e jogar em r0
 
     read_sonar_fim:
-        mov pc, lr
+    movs pc, lr
 
 
 @-------------------------------------------
@@ -294,6 +313,8 @@ READ_SONAR:
 @         0 caso OK
 @-------------------------------------------
 SET_MOTOR_SPEED:
+    
+    msr CPSR_c, 0xD3        @Desabilita interrupcao no modo Supervisor
 
     stmfd SP!, {r4}
 
@@ -330,8 +351,9 @@ SET_MOTOR_SPEED:
         str r3, [r4] @Guarda o novo valor
 
     set_motor_speed_fim:
-        ldmfd SP!, {r4}
-        mov pc, lr
+    ldmfd SP!, {r4}
+    msr CPSR_c, 0x13            @ Habilita interrupcao no modo Supervisor
+    movs pc, lr
 
 @-------------------------------------------
 @ Parametro
@@ -344,6 +366,7 @@ SET_MOTOR_SPEED:
 @-------------------------------------------
 SET_MOTORS_SPEED:@TODO
 
+    msr CPSR_c, 0xD3        @Desabilita interrupcao no modo Supervisor
     stmfd SP!, {r4}
 
     @Valida a velocidade
@@ -373,8 +396,9 @@ SET_MOTORS_SPEED:@TODO
     mov r0, #0
 
     set_motors_speed_fim:
-        ldmfd SP!, {r4}
-        mov pc, lr
+    ldmfd SP!, {r4}
+    msr CPSR_c, 0x13            @ Habilita interrupcao no modo Supervisor
+    movs pc, lr
 
 @-------------------------------------------
 @ Parametro
@@ -385,7 +409,7 @@ SET_MOTORS_SPEED:@TODO
 GET_TIME:
     ldr r1, =CONTADOR
     ldr r0, [r1]
-    mov pc, lr
+    movs pc, lr
 
 @-------------------------------------------
 @ Parametro
@@ -394,9 +418,11 @@ GET_TIME:
 @    Nenhum
 @-------------------------------------------
 SET_TIME:
+    msr CPSR_c, 0xD3        @Desabilita interrupcao no modo Supervisor
     ldr r1, =CONTADOR
     str r0, [r1]
-    mov pc, lr
+    msr CPSR_c, 0x13            @ Habilita interrupcao no modo Supervisor
+    movs pc, lr
 
 @-------------------------------------------
 @ Parametro
@@ -408,7 +434,8 @@ SET_TIME:
 @         0 caso contrário.
 @-------------------------------------------
 SET_ALARM:  @TODO
-
+    
+    msr CPSR_c, 0xD3        @Desabilita interrupcao no modo Supervisor
     stmfd SP!, {r4-r9}
 
     @Incrementa o contador QTD_ALARM
@@ -480,7 +507,8 @@ SET_ALARM:  @TODO
     
     set_alarm_fim:
     ldmfd SP!, {r4-r9}
-    mov pc, lr
+    msr CPSR_c, 0x13            @ Habilita interrupcao no modo Supervisor
+    movs pc, lr
 
 
 .org 0xFFF
