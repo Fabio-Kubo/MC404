@@ -94,17 +94,17 @@ SET_TZIC:
     @ Liga o controlador de interrupcoes
     @ R1 <= TZIC_BASE
 
-    ldr	r1, =TZIC_BASE
+    ldr r1, =TZIC_BASE
 
     @ Configura interrupcao 39 do GPT como nao segura
-    mov	r0, #(1 << 7)
-    str	r0, [r1, #TZIC_INTSEC1]
+    mov r0, #(1 << 7)
+    str r0, [r1, #TZIC_INTSEC1]
 
     @ Habilita interrupcao 39 (GPT)
     @ reg1 bit 7 (gpt)
 
-    mov	r0, #(1 << 7)
-    str	r0, [r1, #TZIC_ENSET1]
+    mov r0, #(1 << 7)
+    str r0, [r1, #TZIC_ENSET1]
 
     @ Configure interrupt39 priority as 1
     @ reg9, byte 3
@@ -120,11 +120,22 @@ SET_TZIC:
     str r0, [r1, #TZIC_PRIOMASK]
 
     @ Habilita o controlador de interrupcoes
-    mov	r0, #1
-    str	r0, [r1, #TZIC_INTCTRL]
+    mov r0, #1
+    str r0, [r1, #TZIC_INTCTRL]
 
     @instrucao msr - habilita interrupcoes
     msr  CPSR_c, #0x13       @ SUPERVISOR mode, IRQ/FIQ enabled
+
+
+    @Zera o DR
+    mov r1, #0
+    ldr r0, =REG_DR
+    str r1, [r0]
+
+    @Configura o GDIR
+    ldr r0, =REG_GDIR
+    ldr r1, =VALOR_GDIR @Carrega o valor do gdir
+    str r1, [r0]        @Salva o novo valor
 
 
 laco:
@@ -159,12 +170,27 @@ SUPERVISOR_HANDLER:
     fim:
     movs pc, lr
 
+@-------------------------------------------
+@ Parametro
+@    R0: id do alarme 
+@ Retorno
+@    nenhum
+@-------------------------------------------
+CHAMA_FUNCAO_ALERTA:
+
+    @Pega a funcao que esta armazenada
+    @Altera para usuario padrao
+    @ Chama funcao
+    @Altera para super ususario
+
+mov pc, lr
+
 
 IRQ_HANDLER:
 
     .set GPT_SR,    0x53FA0008
 
-	@Informa ao GPT que o processador já está ciente de que ocorreu a interrupção
+    @Informa ao GPT que o processador já está ciente de que ocorreu a interrupção
     mov r3, #0
     ldr r2, = GPT_SR
     str r3, [r2]
@@ -174,6 +200,25 @@ IRQ_HANDLER:
     ldr r3, [r2]
     add r3, r3, #1
     str r3, [r2]
+
+    @Verifica se existe algum alarme
+    mov r0, #0
+    ldr r1, =QTD_ALARM
+    ldr r1, [r1]    @Carrega a quantidade de alarmes
+    ldr r2, =ALARMES @Carrega o endereco do vetor Alarmes
+
+    
+    iteraVetor:
+        cmp r0, r1
+        bhi iteraVetor_fim
+        ldr r4, [r2, #4]! 
+
+        cmp r4, r3 @ Compara o tempo do alarme com o tempo do contador 
+        blls CHAMA_FUNCAO_ALERTA
+        add r0, r0, #1
+        b iteraVetor
+
+    iteraVetor_fim:
 
     @Corrige o lr
     sub lr, lr, #4
@@ -207,6 +252,7 @@ READ_SONAR:
     mov  r0, r0, LSL #26 @Desloca o valor para a posicao adequada
     ldr r3, =MASCARA_SONAR_MUX @Seta a mascara
     and r2, r2, r3 @Zera as posicões do id do sonar e da trigger
+    str r2, [r1]
 
     @Delay
     bl DELAY
@@ -214,10 +260,12 @@ READ_SONAR:
     @Sinal alto na trigger + delay
     ldr r3, =MASCARA_SINAL_ALTO_TRIGGER @Seta a mascara
     orr r2, r2, r3 @Seta sinal alto na trigger
+    str r2, [r1]
 
     @Sinal baixo na trigger
     ldr r3, =MASCARA_SINAL_BAIXO_TRIGGER @Seta a mascara
     and r2, r2, r3 @Seta sinal baixo na trigger   
+    str r2, [r1]
 
     delay:
     bl DELAY
@@ -259,7 +307,7 @@ SET_MOTOR_SPEED:
     mov r0, #0
 
     @Carrega o conteudo 
-    ldr r4, =PSR @Carrega o registrador PSR
+    ldr r4, =REG_DR @Carrega o registrador PSR
     ldr r3, [r4]
 
     @Se for o motor 1, pula para sua configuraçao
@@ -275,7 +323,7 @@ SET_MOTOR_SPEED:
     seta_valor:
         and r3, r3, r2 @Zera a posicao com a velocidade do motor e o bit de write
         orr r3, r3, r1 @Configura a nova velocidade
-        stor r3, [r4] @Guarda o novo valor
+        str r3, [r4] @Guarda o novo valor
 
     set_motor_speed_fim:
         ldmfd SP!, {r4}
@@ -305,7 +353,7 @@ SET_MOTORS_SPEED:@TODO
     bhi set_motors_speed_fim
 
     @Carrega o conteudo 
-    ldr r4, =PSR @Carrega o registrador PSR
+    ldr r4, =REG_DR @Carrega o registrador PSR
     ldr r3, [r4]
 
     mov  r0, r0, LSL #7 @Desloca o valor para a posicao adequada
@@ -315,7 +363,7 @@ SET_MOTORS_SPEED:@TODO
     
     orr r3, r3, r0 @Configura a nova velocidade motor 0
     orr r3, r3, r1 @Configura a nova velocidade motor 1
-    stor r3, [r4] @Guarda o novo valor
+    str r3, [r4] @Guarda o novo valor
 
     @Indica que os parametros estão OK
     mov r0, #0
@@ -331,7 +379,7 @@ SET_MOTORS_SPEED:@TODO
 @    R0: Contador
 @-------------------------------------------
 GET_TIME:
-    r1, =CONTADOR
+    ldr r1, =CONTADOR
     ldr r0, [r1]
     mov pc, lr
 
@@ -342,8 +390,8 @@ GET_TIME:
 @    Nenhum
 @-------------------------------------------
 SET_TIME:
-    r1, =CONTADOR
-    stor r0, [r1]
+    ldr r1, =CONTADOR
+    str r0, [r1]
     mov pc, lr
 
 @-------------------------------------------
@@ -383,12 +431,12 @@ SET_ALARM:  @TODO
     sub r3, r3, #1
 
     mov r4, #0
-    mov r2 #0
+    mov r2, #0
 
     calcula_posicao:
     cmp r4, r3
     beq fim_procura
-    add r2, r2, 4
+    add r2, r2, #4
     add r4, r4, #1
     b calcula_posicao
 
@@ -398,12 +446,12 @@ SET_ALARM:  @TODO
     @Salva tempo do alarme
     ldr r4, =ALARMES
     add r4, r4, r2
-    stor r1, [r4]
+    str r1, [r4]
 
     @Salva funçao do alarme
     ldr r4, =FUNCOES_ALARMES
     add r4, r4, r2
-    stor r1, [r4]
+    str r1, [r4]
     
     set_alarm_fim:
     ldmfd SP!, {r4}
