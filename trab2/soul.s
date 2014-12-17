@@ -30,26 +30,28 @@ interrupt_vector:
 @--------------------------------------------------------
 @ Constantes registradores
 @--------------------------------------------------------
-.set DR,    0x53F84000     @Data Register
-.set GDIR,  0x53F84004     @Direction Register
-.set PSR,   0x53F84008     @Pad status register - apenas para leitura
+.set REG_DR,    0x53F84000     @Data Register
+.set REG_GDIR,  0x53F84004     @Direction Register
+.set REG_PSR,   0x53F84008     @Pad status register - apenas para leitura
+.set VALOR_GDIR,               0b01111100000000000011111111111111
 
 @--------------------------------------------------------
 @ Mascaras
 @--------------------------------------------------------
-.set MASCARA_MOTOR_ZERO,            #0b11111111111111111100000001111111
-.set MASCARA_MOTOR_UM,              #0b11111111111111111111111110000000
-.set MASCARA_MOTORES,               #0b11111111111111111100000000000000
-.set MASCARA_SONAR_MUX,             #0b10000011111111111111111111111111
-.set MASCARA_SINAL_ALTO_TRIGGER,    #0b01000000000000000000000000000000
-.set MASCARA_SINAL_BAIXO_TRIGGER,   #0b10111111111111111111111111111111
-.set MASCARA_FLAG,                  #0b10000000000000000000000000000000
-.set MASCARA_SONAR_DATA             #0b00000011111111111100000000000000
+.set MASCARA_MOTOR_ZERO,            0b11111111111111111100000001111111
+.set MASCARA_MOTOR_UM,              0b11111111111111111111111110000000
+.set MASCARA_MOTORES,               0b11111111111111111100000000000000
+.set MASCARA_SONAR_MUX,             0b10000011111111111111111111111111
+.set MASCARA_SINAL_ALTO_TRIGGER,    0b01000000000000000000000000000000
+.set MASCARA_SINAL_BAIXO_TRIGGER,   0b10111111111111111111111111111111
+.set MASCARA_FLAG,                  0b10000000000000000000000000000000
+.set MASCARA_SONAR_DATA,             0b00000011111111111100000000000000
 
 @--------------------------------------------------------
 @ Outras constantes
 @--------------------------------------------------------
-.set MAX_ALARMS #16
+.set MAX_ALARMS, 16
+.set LOCO_CODE, 0x77802000
 
 
 .align 4
@@ -136,7 +138,9 @@ SET_TZIC:
     ldr r0, =REG_GDIR
     ldr r1, =VALOR_GDIR @Carrega o valor do gdir
     str r1, [r0]        @Salva o novo valor
-
+    
+    msr CPSR_c, 0x30            @ habilita modo de usuário
+    ldr pc, =LOCO_CODE          @ entra no código do programa usuário
 
 laco:
         b laco
@@ -245,7 +249,7 @@ READ_SONAR:
     bhi read_sonar_fim
 
     @Carrega o conteudo 
-    ldr r1, =PSR @Carrega o registrador PSR
+    ldr r1, =REG_DR @Carrega o registrador REG_DR
     ldr r2, [r1]
 
     @Seta o id do sonar + Sinal baixo na trigger
@@ -307,7 +311,7 @@ SET_MOTOR_SPEED:
     mov r0, #0
 
     @Carrega o conteudo 
-    ldr r4, =REG_DR @Carrega o registrador PSR
+    ldr r4, =REG_DR @Carrega o registrador REG_DR
     ldr r3, [r4]
 
     @Se for o motor 1, pula para sua configuraçao
@@ -353,7 +357,7 @@ SET_MOTORS_SPEED:@TODO
     bhi set_motors_speed_fim
 
     @Carrega o conteudo 
-    ldr r4, =REG_DR @Carrega o registrador PSR
+    ldr r4, =REG_DR @Carrega o registrador REG_DR
     ldr r3, [r4]
 
     mov  r0, r0, LSL #7 @Desloca o valor para a posicao adequada
@@ -405,9 +409,9 @@ SET_TIME:
 @-------------------------------------------
 SET_ALARM:  @TODO
 
-    stmfd SP!, {r4}
+    stmfd SP!, {r4-r9}
 
-    @Incrementa QTD_ALARM
+    @Incrementa o contador QTD_ALARM
     ldr r2, =QTD_ALARM
     ldr r3, [r2]
     add r3, r3, #1
@@ -423,38 +427,59 @@ SET_ALARM:  @TODO
     ldr r4, =CONTADOR
     ldr r4, [r4]
     cmp r1, r4
-    movls r0, #-2       @Se for menor ou igual, seta o codigo do erro em r0 e
+    movls r0, #-2       @Se for menor ou igual, seta o codigo do erro em r0
     blls set_alarm_fim  @vai para o final da função
 
-
     str r3, [r2]  @Salva o novo valor no contador
-    sub r3, r3, #1
-
-    mov r4, #0
-    mov r2, #0
-
-    calcula_posicao:
-    cmp r4, r3
-    beq fim_procura
-    add r2, r2, #4
-    add r4, r4, #1
-    b calcula_posicao
-
     
-    salva_info_alarme:
-        
-    @Salva tempo do alarme
-    ldr r4, =ALARMES
-    add r4, r4, r2
-    str r1, [r4]
+    ldr r3, =ALARMES @Carrega o endereço dos alarmes
+    ldr r6, =FUNCOES_ALARMES @Carrega o endereço das funcoes dos alarmes
 
-    @Salva funçao do alarme
-    ldr r4, =FUNCOES_ALARMES
-    add r4, r4, r2
-    str r1, [r4]
+    @Encontra a posicao em que deve ser inserido (a lista é ordenada decrescente)
+    procura_posicao:
+        ldr r2, [r3]
+        cmp r2, #-1
+        beq salva_novo_alarme
+
+        cmp r1, r2
+        bhi desloca_lista
+        add r3, r3, #4
+        add r6, r6, #4
+
+
+    desloca_lista:
+    add r5, r3, #4 @ Coloca em r5 o endereco do proximo alarme
+
+    ldr r8, [r6] @Carrega a funçao atual
+    add r7, r6, #4 @ Coloca em r7 o endereco do proximo função
+
+    loop_deslocamento:
+    
+        ldr r4, [r5]           @Carrega o proximo alarme
+        ldr r9, [r7]           @Carrega a proxima funçao
+
+        str r2, [r5]            @Armazena o alarme da posicao i em i+1
+        str r8, [r7]            @Armazena a funcao da posicao i em i+1
+
+        cmp r4, #-1             @Verifica se o alarme que estava na posicao i+1 está vazia
+        beq salva_novo_alarme   @Se estiver vazia, acabou o deslocamento
+
+        mov r2, r4              @Caso contrário, coloco em r2 o alarme do i+1
+        mov r8, r9              @Caso contrário, coloco em r2 a função do i+1
+
+        add r5, r5, #4           @Avanço para o alarme de posicao i+2
+        add r7, r7, #4           @Avanço para função de posicao i+2
+        b loop_deslocamento     
+
+
+    salva_novo_alarme:
+    str r1, [r3] @Salva o alarme
+    str r0, [r6] @Salva a função
+
+    mov r0, #0 @Coloca em r0 o valor que indica que o alarme foi adicionado com sucesso!
     
     set_alarm_fim:
-    ldmfd SP!, {r4}
+    ldmfd SP!, {r4-r9}
     mov pc, lr
 
 
@@ -462,6 +487,40 @@ SET_ALARM:  @TODO
 .data
 CONTADOR:  .word 0
 QTD_ALARM: .word 0
-ALARMES:   .wfill 16 -1
-FUNCOES_ALARMES .wfill 16 0x00
+ALARMES: 
+    .word -1
+    .word -1
+    .word -1
+    .word -1
+    .word -1
+    .word -1
+    .word -1
+    .word -1
+    .word -1
+    .word -1
+    .word -1
+    .word -1
+    .word -1
+    .word -1
+    .word -1
+    .word -1
+
+FUNCOES_ALARMES:
+    .word 0
+    .word 0
+    .word 0
+    .word 0
+    .word 0
+    .word 0
+    .word 0
+    .word 0
+    .word 0
+    .word 0
+    .word 0
+    .word 0
+    .word 0
+    .word 0
+    .word 0
+    .word 0
+
 
