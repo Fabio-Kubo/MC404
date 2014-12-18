@@ -139,7 +139,6 @@ SET_TZIC:
     @instrucao msr - habilita interrupcoes
     msr  CPSR_c, #0x13       @ SUPERVISOR mode, IRQ/FIQ enabled
 
-
     @Zera o DR
     mov r1, #0
     ldr r0, =REG_DR
@@ -152,29 +151,26 @@ SET_TZIC:
 
 
     @Setando as pilhas de cada modo
-    msr CPSR_c, #0xDF           @ Enter system mode, FIQ/IRQ disabled
+    msr CPSR_c, #0xDF           @Entra no modo System, com FIQ/IRQ desabilitados
     ldr sp, =USER_PILHA
 
-    msr CPSR_c, #0xD2           @ Enter IRQ mode, FIQ/IRQ disabled
+    msr CPSR_c, #0xD2           @Entra no modo IRQ, com FIQ/IRQ desabilitados
     ldr sp, =IRQ_PILHA
     
-    msr CPSR_c, #0x13           @ SUPERVISOR mode, IRQ/FIQ enabled
+    msr CPSR_c, #0x13           @Entra no modo Supervisor, com FIQ/IRQ habilitados
     ldr sp, =SUPERVISOR_PILHA
 
-    msr CPSR_c, #0xD1           @ Enter FIQ mode, FIQ/IRQ disabled
+    msr CPSR_c, #0xD1           @Entra no modo FIQ, com FIQ/IRQ desabilitados
     ldr sp, =FIQ_PILHA
 
-    msr CPSR_c, #0xD7           @ Enter abort mode, FIQ/IRQ disabled
+    msr CPSR_c, #0xD7           @Entra no modo Abort, com FIQ/IRQ desabilitados
     ldr sp, =ABORT_PILHA
 
-@   msr CPSR_c, #0xD7B           @ Enter undefined mode, FIQ/IRQ disabled
-@   ldr sp, =UNDEFINED_PILHA
+    msr CPSR_c, #0xDB           @Entra no modo Undefined, com FIQ/IRQ desabilitados
+    ldr sp, =UNDEFINED_PILHA
 
-    msr CPSR_c, 0x30            @ habilita modo de usuário
+    msr CPSR_c, #0x30            @ habilita modo de usuário
     @ldr pc, =USER_CODE          @ entra no código do programa usuário
-
-    msr CPSR_c, 0x30            @ habilita modo de usuário
-    ldr pc, =LOCO_CODE          @ entra no código do programa usuário
 
 
 SUPERVISOR_HANDLER:
@@ -197,60 +193,105 @@ SUPERVISOR_HANDLER:
     cmp r7, #13
     beq SET_ALARM
 
-
-@-------------------------------------------
-@ Parametro
-@    R0: id do alarme 
-@ Retorno
-@    nenhum
-@-------------------------------------------
-CHAMA_FUNCAO_ALERTA:
-
-    @Pega a funcao que esta armazenada
-    @Altera para usuario padrao
-    @ Chama funcao
-    @Altera para super ususario
-
-mov pc, lr
-
-
 IRQ_HANDLER:
 
+    stmfd sp!, {r0-r4}
+
     @Informa ao GPT que o processador já está ciente de que ocorreu a interrupção
-    mov r3, #0
+    mov r3, #0x1
     ldr r2, = GPT_SR
     str r3, [r2]
 
     @Incrementa contador
-    ldr r2, = CONTADOR
+    ldr r2, =CONTADOR
     ldr r3, [r2]
     add r3, r3, #1
     str r3, [r2]
 
     @Verifica se existe algum alarme
-    mov r0, #0
-    ldr r1, =QTD_ALARM
-    ldr r1, [r1]    @Carrega a quantidade de alarmes
-    ldr r2, =ALARMES @Carrega o endereco do vetor Alarmes
-
+    ldr r0, =QTD_ALARM
+    ldr r0, [r0]
+    ldr r1, =ALARMES
+    ldr r2, =FUNCOES_ALARMES
     
-    iteraVetor:
-        cmp r0, r1
-        bhi iteraVetor_fim
-        ldr r4, [r2, #4]! 
+    cmp r0, #0
+    beq irq_handler_fim @Senão tiver alarme, vai para o fim do tratamento
 
-        cmp r4, r3 @ Compara o tempo do alarme com o tempo do contador 
-        blls CHAMA_FUNCAO_ALERTA
-        add r0, r0, #1
-        b iteraVetor
+    @Calcula o deslocamento para se chegar ao ultimo alarme(o de menor tempo)
+    mov r4, #4
+    mul r4, r0, r4
+    sub r4, r4, #4
 
-    iteraVetor_fim:
+    @Atualiza a posicao dos vetores de alarme e de função
+    add r1, r1, r4
+    add r2, r2, r4
 
+    ldr r0, [r1]    @Carrega o valor do alarme
+    cmp r0, r3      @Compara o valor do alarme com o contador
+    bhi irq_handler_fim
+
+  
+    bl SALVA_CONTEXTO @Salva contexto
+
+    msr CPSR_c, #0xD0      @ habilita modo de usuário com interrupções desabilitadas
+    ldr r3, =fim_chamada_usuario
+    stmfd sp!, {r3}  @Coloca na pilha do usuário o local de volta da função
+    ldr r2, [r2] @Carrega a função a ser chamada
+    mov pc, r2
+
+    fim_chamada_usuario:
+    
+    @@@@ msr CPSR_c, #0xD0      @ habilita modo de usuário com interrupções desabilitadas
+
+    bl RECUPERA_CONTEXTO @Recupera contexto
+
+
+    @Atualiza o numero de alarmes
+    ldr r0, =QTD_ALARM 
+    ldr r2, [r0]
+    sub r2, r2, #1
+    str r2, [r0]
+
+    @Retira o alarme da lista
+    mov r0, #-1
+    str r0, [r1]
+    
+    irq_handler_fim:
     @Corrige o lr
     sub lr, lr, #4
 
+    ldmfd sp!, {r0-r4}
+    movs pc, lr                 @ Retorna da interrupção
 
+@-------------------------------------------
+@ Rotina que salva o contexto
+@-------------------------------------------
+SALVA_CONTEXTO:
+stmfd sp!, {r0-r4}
+
+mrs r0, SPSR
+stmfd sp!, {r0}
+
+
+@-------------------------------------------
+@ Rotina que recupera o contexto
+@-------------------------------------------
+RECUPERA_CONTEXTO:
+
+
+
+@---------------------------------------------------------------------------------------------
+@ Rotina que executa cerca de 10 000 instruções com intuito de gerar delay
+@---------------------------------------------------------------------------------------------
 DELAY:
+
+    mov r0, #1
+    mov r1, #10000
+
+    laco_delay:
+    cmp r0, r1
+    blls laco_delay
+
     mov pc, lr
     
 @-------------------------------------------
