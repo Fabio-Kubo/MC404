@@ -2,13 +2,16 @@
 .global set_speed_motors
 .global read_sonar
 .global read_sonars
+.global add_alarm
+.global get_time
+.global set_time
 
 .align 4
 
 set_speed_motor:		@ Seta a velocidade do motor. Em r0 está a velocidade e em r1 está o motor id (0 for left motor, 1 for right motor)
 
 	stmfd SP!, {r7}
-	add r7, r1, #9 	@ Soma o id do motor com 126, pois 126 é o codigo para alterar o motor 0 e 127 para o motor 1
+	mov r7, #9
 	svc 0x0
 	ldmfd SP!, {r7}
 	mov pc, lr
@@ -34,7 +37,7 @@ read_sonars:
 	ldmfd SP!, {r7}
 		mov r2, r0			@Copia o parametro para r2
 		mov r3, #0 			@Inicializa o contador
-		mov r7, #8		@Seta a função
+		mov r7, #8			@Seta a função
 	loop:
 		cmp r3, #15
 		bhi fim_loop

@@ -39,12 +39,12 @@ interrupt_vector:
 @--------------------------------------------------------
 @ Constantes com os endereços das pilhas
 @--------------------------------------------------------
-.set USER_PILHA,        0x1000
-.set IRQ_PILHA,         0x2000
-.set SUPERVISOR_PILHA,  0x3000
-.set FIQ_PILHA,         0x4000
-.set ABORT_PILHA,       0x5000
-.set UNDEFINED_PILHA,   0x6000
+.set USER_PILHA,        0x77702000
+.set IRQ_PILHA,         0x77703000
+.set SUPERVISOR_PILHA,  0x77704000
+.set FIQ_PILHA,         0x77705000
+.set ABORT_PILHA,       0x77706000
+.set UNDEFINED_PILHA,   0x77707000
 
 @--------------------------------------------------------
 @ Mascaras
@@ -52,6 +52,7 @@ interrupt_vector:
 .set MASCARA_MOTOR_ZERO,            0b11111111111111111100000001111111
 .set MASCARA_MOTOR_UM,              0b11111111111111111111111110000000
 .set MASCARA_MOTORES,               0b11111111111111111100000000000000
+.set MASCARA_WRITE_MOTORES,         0b00000000000000000010000001000000
 .set MASCARA_SONAR_MUX,             0b10000011111111111111111111111111
 .set MASCARA_SINAL_ALTO_TRIGGER,    0b01000000000000000000000000000000
 .set MASCARA_SINAL_BAIXO_TRIGGER,   0b10111111111111111111111111111111
@@ -63,17 +64,13 @@ interrupt_vector:
 @--------------------------------------------------------
 .set MAX_ALARMS, 16
 .set LOCO_CODE, 0x77802000
+.set QTD_INSTRUCOES_DELAY, 10000
 
 
 .align 4
 .org 0x100
 
 .text
-
-    @ Zera o contador
-    ldr r2, =CONTADOR
-    mov r0,#0
-    str r0,[r2]
 
 RESET_HANDLER:
     
@@ -139,10 +136,10 @@ SET_TZIC:
     @instrucao msr - habilita interrupcoes
     msr  CPSR_c, #0x13       @ SUPERVISOR mode, IRQ/FIQ enabled
 
-    @Zera o DR
-    mov r1, #0
-    ldr r0, =REG_DR
-    str r1, [r0]
+    @ Zera o contador
+    ldr r2, =CONTADOR
+    mov r0,#0
+    str r0,[r2]
 
     @Configura o GDIR
     ldr r0, =REG_GDIR
@@ -151,26 +148,27 @@ SET_TZIC:
 
 
     @Setando as pilhas de cada modo
-    msr CPSR_c, #0xDF           @Entra no modo System, com FIQ/IRQ desabilitados
+    msr CPSR, #0xDF           @Modo System, sem FIQ/IRQ
     ldr sp, =USER_PILHA
 
-    msr CPSR_c, #0xD2           @Entra no modo IRQ, com FIQ/IRQ desabilitados
+    msr CPSR, #0xD2           @Modo IRQ, sem FIQ/IRQ
     ldr sp, =IRQ_PILHA
     
-    msr CPSR_c, #0x13           @Entra no modo Supervisor, com FIQ/IRQ habilitados
+    msr CPSR, #0x13           @Modo Supervisor, com FIQ/IRQ habilitados
     ldr sp, =SUPERVISOR_PILHA
 
-    msr CPSR_c, #0xD1           @Entra no modo FIQ, com FIQ/IRQ desabilitados
+    msr CPSR, #0xD1           @Modo FIQ, sem FIQ/IRQ
     ldr sp, =FIQ_PILHA
 
-    msr CPSR_c, #0xD7           @Entra no modo Abort, com FIQ/IRQ desabilitados
+    msr CPSR, #0xD7           @Modo Abort, sem FIQ/IRQ
     ldr sp, =ABORT_PILHA
 
-    msr CPSR_c, #0xDB           @Entra no modo Undefined, com FIQ/IRQ desabilitados
+    msr CPSR, #0xDB           @Modo Undefined, sem FIQ/IRQ
     ldr sp, =UNDEFINED_PILHA
 
-    msr CPSR_c, #0x30            @ habilita modo de usuário
-    @ldr pc, =USER_CODE          @ entra no código do programa usuário
+    msr CPSR, #0x30            @Modo de usuário
+    ldr r0, = LOCO_CODE 
+    bx r0          @ entra no código do programa usuário
 
 
 SUPERVISOR_HANDLER:
@@ -193,9 +191,17 @@ SUPERVISOR_HANDLER:
     cmp r7, #13
     beq SET_ALARM
 
+    cmp r7, #14
+    beq RECUPERA_MODO_SUPER
+
 IRQ_HANDLER:
 
-    stmfd sp!, {r0-r4}
+    @Salva os registradores
+    stmfd sp!, {r0-r4, r7}
+
+    @Salva o estado de antes da interrupção
+    mrs r0, SPSR
+    stmfd sp!, {r0}
 
     @Informa ao GPT que o processador já está ciente de que ocorreu a interrupção
     mov r3, #0x1
@@ -230,21 +236,21 @@ IRQ_HANDLER:
     cmp r0, r3      @Compara o valor do alarme com o contador
     bhi irq_handler_fim
 
-  
-    bl SALVA_CONTEXTO @Salva contexto
-
-    msr CPSR_c, #0xD0      @ habilita modo de usuário com interrupções desabilitadas
-    ldr r3, =fim_chamada_usuario
-    stmfd sp!, {r3}  @Coloca na pilha do usuário o local de volta da função
-    ldr r2, [r2] @Carrega a função a ser chamada
-    mov pc, r2
-
-    fim_chamada_usuario:
+    msr CPSR_c, #0xD0      @ habilita modo de usuário sem interrupções FIQ/IRQ
     
-    @@@@ msr CPSR_c, #0xD0      @ habilita modo de usuário com interrupções desabilitadas
+    ldr r3, =fim_chamada_funcao
+    stmfd sp!, {r3}  @Coloca na pilha do usuário o local de volta da função
+    
+    ldr pc, [r2] @Chama a função do usuário
 
-    bl RECUPERA_CONTEXTO @Recupera contexto
+    fim_chamada_funcao:
 
+    @Recupera e o modo anterior
+    mov r7, #14
+    svc 0x0
+
+    @Atualiza o modo pra irq
+    msr CPSR_c, #0xD2      @ habilita modo de usuário sem interrupções FIQ/IRQ      
 
     @Atualiza o numero de alarmes
     ldr r0, =QTD_ALARM 
@@ -260,25 +266,21 @@ IRQ_HANDLER:
     @Corrige o lr
     sub lr, lr, #4
 
-    ldmfd sp!, {r0-r4}
+    ldmfd sp!, {r4} @r4 recebe o valor de SPSR
+    msr CPSR_c, r4      @ Volta para o estado anterior
+
+    ldmfd sp!, {r0-r4, r7}
     movs pc, lr                 @ Retorna da interrupção
 
-@-------------------------------------------
-@ Rotina que salva o contexto
-@-------------------------------------------
-SALVA_CONTEXTO:
-stmfd sp!, {r0-r4}
-
-mrs r0, SPSR
-stmfd sp!, {r0}
-
 
 @-------------------------------------------
-@ Rotina que recupera o contexto
+@ Rotina que recupera o contexto.
+@ Retorna em r0 o modo anterior
 @-------------------------------------------
 RECUPERA_CONTEXTO:
-
-
+    ldmfd sp!, {r5}
+    ldmfd sp!, {r0-r4}
+    mov pc, lr
 
 @---------------------------------------------------------------------------------------------
 @ Rotina que executa cerca de 10 000 instruções com intuito de gerar delay
@@ -286,7 +288,7 @@ RECUPERA_CONTEXTO:
 DELAY:
 
     mov r0, #1
-    mov r1, #10000
+    ldr r1, =QTD_INSTRUCOES_DELAY
 
     laco_delay:
     cmp r0, r1
@@ -325,20 +327,27 @@ READ_SONAR:
     ldr r3, =MASCARA_SINAL_ALTO_TRIGGER @Seta a mascara
     orr r2, r2, r3 @Seta sinal alto na trigger
     str r2, [r1]
+    bl DELAY
 
     @Sinal baixo na trigger
     ldr r3, =MASCARA_SINAL_BAIXO_TRIGGER @Seta a mascara
     and r2, r2, r3 @Seta sinal baixo na trigger   
     str r2, [r1]
 
-    delay:
-    bl DELAY
-    ldr r2, [r1]
-
-
     @delay enquanto não tiver FLAG = 1
+    ldr r3, =MASCARA_FLAG
+    READ_SONAR_ESPERAR:
+        bl DELAY
+        ldr r2, [r1]
+        and r2, r0, r3
+        cmp r2, #0
+        beq READ_SONAR_ESPERAR
 
-    @Pegar a informação e jogar em r0
+
+    ldr r2, [r1]
+    ldr r1, =MASCARA_SONAR_DATA
+    and r2, r2, r1
+    mov r0, r2, LSR #14 @ Joga o valor lido para r0
 
     read_sonar_fim:
     movs pc, lr
@@ -426,8 +435,11 @@ SET_MOTORS_SPEED:@TODO
 
     mov  r0, r0, LSL #7 @Desloca o valor para a posicao adequada
     ldr r2, =MASCARA_MOTORES @Carrega a mascara
-       
+
     and r3, r3, r2 @Zera a posicao com as velocidades dos motores e os bits de write
+
+    ldr r2, =MASCARA_WRITE_MOTORES @Carrega a mascara de setar os writes
+    orr r3, r3, r2 @ Seta os bits de write
     
     orr r3, r3, r0 @Configura a nova velocidade motor 0
     orr r3, r3, r1 @Configura a nova velocidade motor 1
@@ -440,6 +452,10 @@ SET_MOTORS_SPEED:@TODO
     ldmfd SP!, {r4}
     msr CPSR_c, 0x13            @ Habilita interrupcao no modo Supervisor
     movs pc, lr
+
+
+RECUPERA_MODO_SUPER:
+    mov pc, lr
 
 @-------------------------------------------
 @ Parametro
@@ -486,7 +502,6 @@ SET_ALARM:  @TODO
     
     @Valida quantidade maxima
     ldr r4, =MAX_ALARMS 
-    ldr r4, [r4]
     cmp r3, r4
     movhi r0, #-1     @Caso seja maior, retorna o codigo do erro em r0
     bhi set_alarm_fim @Caso seja maior, vai para o final da funcao
