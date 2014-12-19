@@ -42,9 +42,6 @@ interrupt_vector:
 .set USER_PILHA,        0x77702000
 .set IRQ_PILHA,         0x77703000
 .set SUPERVISOR_PILHA,  0x77704000
-.set FIQ_PILHA,         0x77705000
-.set ABORT_PILHA,       0x77706000
-.set UNDEFINED_PILHA,   0x77707000
 
 @--------------------------------------------------------
 @ Mascaras
@@ -156,15 +153,6 @@ SET_TZIC:
     
     msr CPSR, #0x13           @Modo Supervisor, com FIQ/IRQ habilitados
     ldr sp, =SUPERVISOR_PILHA
-
-    msr CPSR, #0xD1           @Modo FIQ, sem FIQ/IRQ
-    ldr sp, =FIQ_PILHA
-
-    msr CPSR, #0xD7           @Modo Abort, sem FIQ/IRQ
-    ldr sp, =ABORT_PILHA
-
-    msr CPSR, #0xDB           @Modo Undefined, sem FIQ/IRQ
-    ldr sp, =UNDEFINED_PILHA
 
     msr CPSR, #0x30            @Modo de usuário
     ldr r0, = LOCO_CODE 
