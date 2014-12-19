@@ -14,9 +14,9 @@ interrupt_vector:
 @--------------------------------------------------------
 .set GPT_CR,             0x53FA0000
 .set GPT_PR,             0x53FA0004
-.set GPT_OCR1,           0x53FA0010
-.set GPT_IR,             0x53FA000C
 .set GPT_SR,             0x53FA0008
+.set GPT_IR,             0x53FA000C
+.set GPT_OCR1,           0x53FA0010
 
 @--------------------------------------------------------
 @ Constantes para os enderecos do TZIC
@@ -31,10 +31,10 @@ interrupt_vector:
 @--------------------------------------------------------
 @ Constantes registradores
 @--------------------------------------------------------
-.set REG_DR,    0x53F84000     @Data Register
-.set REG_GDIR,  0x53F84004     @Direction Register
-.set REG_PSR,   0x53F84008     @Pad status register - apenas para leitura
-.set VALOR_GDIR,               0b01111100000000000011111111111111
+.set REG_DR,                0x53F84000     @Data Register
+.set REG_GDIR,              0x53F84004     @Direction Register
+.set REG_PSR,               0x53F84008     @Pad status register - apenas para leitura
+.set VALOR_GDIR,            0b01111100000000000011111111111111
 
 @--------------------------------------------------------
 @ Constantes com os endereços das pilhas
@@ -129,9 +129,6 @@ SET_TZIC:
     mov r0, #1
     str r0, [r1, #TZIC_INTCTRL]
 
-    @instrucao msr - habilita interrupcoes
-    msr  CPSR_c, #0x13       @ SUPERVISOR mode, IRQ/FIQ enabled
-
     @ Zera o contador
     ldr r2, =CONTADOR
     mov r0,#0
@@ -142,20 +139,18 @@ SET_TZIC:
     ldr r1, =VALOR_GDIR @Carrega o valor do gdir
     str r1, [r0]        @Salva o novo valor
 
-
     @Setando as pilhas de cada modo
-    msr CPSR, #0xDF           @Modo System, sem FIQ/IRQ
+    msr CPSR, #0xDF           @Modo System sem FIQ/IRQ
     ldr sp, =USER_PILHA
 
-    msr CPSR, #0xD2           @Modo IRQ, sem FIQ/IRQ
+    msr CPSR, #0xD2           @Modo IRQ sem FIQ/IRQ
     ldr sp, =IRQ_PILHA
     
-    msr CPSR, #0x13           @Modo Supervisor, com FIQ/IRQ habilitados
+    msr CPSR, #0x13           @Modo Supervisor com FIQ/IRQ habilitados
     ldr sp, =SUPERVISOR_PILHA
 
-    msr CPSR, #0x30            @Modo de usuário
-    ldr r0, = LOCO_CODE 
-    bx r0          @ entra no código do programa usuário
+    msr CPSR, #0x10            @Modo de usuário com FIQ/IRQ habilitados
+    ldr pc, = LOCO_CODE        @ entra no código do programa usuário
 
 
 SUPERVISOR_HANDLER:
@@ -181,6 +176,11 @@ SUPERVISOR_HANDLER:
     cmp r7, #14
     beq RECUPERA_MODO_SUPER
 
+@-------------------------------------------
+@ No tratamento dessa interrupção é feito
+@ - incremento do contador
+@ - Verifica se ha um alarme, se tiver executa a funçao
+@-------------------------------------------
 IRQ_HANDLER:
 
     @Salva os registradores
@@ -283,13 +283,15 @@ DELAY:
 
     mov pc, lr
     
-@-------------------------------------------
+@---------------------------------------------------------
+@ Rotina que retorna a leitura do sonar de acordo com o id
+@
 @ Parametro
 @    R0: Id do sonar 
 @ Retorno
 @    R0: valor da leitura do sonar ou
 @        -1 se o id for inválido.
-@-------------------------------------------
+@---------------------------------------------------------
 READ_SONAR:
 
     @Valida o id do sonar
@@ -341,6 +343,8 @@ READ_SONAR:
 
 
 @-------------------------------------------
+@ Rotina que seta a velocidade do motor
+@
 @ Parametro
 @    R0: id do motor
 @    R1: velocidade a ser definida
@@ -393,6 +397,8 @@ SET_MOTOR_SPEED:
     movs pc, lr
 
 @-------------------------------------------
+@ Rotina que seta as velocidades dos motores
+@
 @ Parametro
 @    R0: Velocidade para o motor 0.
 @    R1: Velocidade para o motor 1.
@@ -442,6 +448,8 @@ RECUPERA_MODO_SUPER:
     mov pc, lr
 
 @-------------------------------------------
+@ Rotina que retorna o valor do contador de tempo
+@
 @ Parametro
 @   Nenhum
 @ Retorno
@@ -453,6 +461,8 @@ GET_TIME:
     movs pc, lr
 
 @-------------------------------------------
+@ Rotina que seta o valor do contador de tempo
+@
 @ Parametro
 @   r0: novo valor do contador
 @ Retorno
@@ -465,7 +475,9 @@ SET_TIME:
     msr CPSR_c, 0x13            @ Habilita interrupcao no modo Supervisor
     movs pc, lr
 
-@-------------------------------------------
+@-----------------------------------------------------------
+@ Rotina que adiciona um alarme
+@
 @ Parametro
 @   R0: ponteiro para função a ser chamada na ocorrência do alarme.
 @   R1: tempo do sistema. 
@@ -473,7 +485,8 @@ SET_TIME:
 @    R0: -1 caso o número de alarmes máximo ativo no sistema seja maior do que MAX_ALARMS. 
 @        -2 caso o tempo seja menor do que o tempo atual do sistema. 
 @         0 caso contrário.
-@-------------------------------------------
+@-----------------------------------------------------------
+@ Parametro
 SET_ALARM:  @TODO
     
     msr CPSR_c, 0xD3        @Desabilita interrupcao no modo Supervisor
