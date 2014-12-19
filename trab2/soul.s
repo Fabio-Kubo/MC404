@@ -49,7 +49,6 @@ interrupt_vector:
 .set MASCARA_MOTOR_ZERO,            0b11111111111111111100000001111111
 .set MASCARA_MOTOR_UM,              0b11111111111111111111111110000000
 .set MASCARA_MOTORES,               0b11111111111111111100000000000000
-.set MASCARA_WRITE_MOTORES,         0b00000000000000000010000001000000
 .set MASCARA_SONAR_MUX,             0b10000011111111111111111111111111
 .set MASCARA_SINAL_ALTO_TRIGGER,    0b01000000000000000000000000000000
 .set MASCARA_SINAL_BAIXO_TRIGGER,   0b10111111111111111111111111111111
@@ -402,7 +401,7 @@ SET_MOTOR_SPEED:
 @        -2 caso a velocidade para o motor 1 seja inválida
 @         0 caso Ok.
 @-------------------------------------------
-SET_MOTORS_SPEED:@TODO
+SET_MOTORS_SPEED:
 
     msr CPSR_c, 0xD3        @Desabilita interrupcao no modo Supervisor
     stmfd SP!, {r4}
@@ -425,10 +424,7 @@ SET_MOTORS_SPEED:@TODO
     ldr r2, =MASCARA_MOTORES @Carrega a mascara
 
     and r3, r3, r2 @Zera a posicao com as velocidades dos motores e os bits de write
-
-    ldr r2, =MASCARA_WRITE_MOTORES @Carrega a mascara de setar os writes
-    orr r3, r3, r2 @ Seta os bits de write
-    
+   
     orr r3, r3, r0 @Configura a nova velocidade motor 0
     orr r3, r3, r1 @Configura a nova velocidade motor 1
     str r3, [r4] @Guarda o novo valor
