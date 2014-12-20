@@ -131,8 +131,8 @@ SET_TZIC:
 
     @ Zera o contador
     ldr r2, =CONTADOR
-    mov r0,#0
-    str r0,[r2]
+    mov r0, #0
+    str r0, [r2]
 
     @Configura o GDIR
     ldr r0, =REG_GDIR
@@ -156,25 +156,25 @@ SET_TZIC:
 SUPERVISOR_HANDLER:
     
     cmp r7, #8
-    beq READ_SONAR
+    bleq READ_SONAR
         
     cmp r7, #9
-    beq SET_MOTOR_SPEED
+    bleq SET_MOTOR_SPEED
         
     cmp r7, #10
-    beq SET_MOTORS_SPEED
+    bleq SET_MOTORS_SPEED
         
     cmp r7, #11
-    beq GET_TIME
+    bleq GET_TIME
         
     cmp r7, #12
-    beq SET_TIME
+    bleq SET_TIME
 
     cmp r7, #13
-    beq SET_ALARM
+    bleq SET_ALARM
 
     cmp r7, #14
-    beq RECUPERA_MODO_SUPER
+    bleq RECUPERA_MODO_SUPER
 
 @-------------------------------------------
 @ No tratamento dessa interrupção é feito
@@ -183,15 +183,8 @@ SUPERVISOR_HANDLER:
 @-------------------------------------------
 IRQ_HANDLER:
 
-    @Salva os registradores
-    stmfd sp!, {r0-r4, r7}
-
-    @Salva o estado de antes da interrupção
-    mrs r0, SPSR
-    stmfd sp!, {r0}
-
     @Informa ao GPT que o processador já está ciente de que ocorreu a interrupção
-    mov r3, #0x1
+    mov r3, #1
     ldr r2, = GPT_SR
     str r3, [r2]
 
@@ -223,24 +216,26 @@ IRQ_HANDLER:
     cmp r0, r3      @Compara o valor do alarme com o contador
     bhi irq_handler_fim
 
-    msr CPSR_c, #0xD0      @ habilita modo de usuário sem interrupções FIQ/IRQ
+    msr CPSR, #0b11010000      @ habilita modo de usuário sem interrupções FIQ/IRQ
     
+    @Salva os registradores do usuario
+    stmfd sp!, {r0-r3}
+
     ldr r3, =fim_chamada_funcao
     stmfd sp!, {r3}  @Coloca na pilha do usuário o local de volta da função
     
     ldr pc, [r2] @Chama a função do usuário
 
     fim_chamada_funcao:
+    
+    ldmfd sp!, {r0-r3}
 
     @Recupera e o modo anterior
     mov r7, #14
-    svc 0x0
-
-    @Atualiza o modo pra irq
-    msr CPSR_c, #0xD2      @ habilita modo de usuário sem interrupções FIQ/IRQ      
+    svc 0x0      
 
     @Atualiza o numero de alarmes
-    ldr r0, =QTD_ALARM 
+    ldr r0, =QTD_ALARM
     ldr r2, [r0]
     sub r2, r2, #1
     str r2, [r0]
@@ -249,35 +244,26 @@ IRQ_HANDLER:
     mov r0, #-1
     str r0, [r1]
     
+    msr CPSR, #0b11010010 @ Modo irq sem interrupcoes
+    
     irq_handler_fim:
+
     @Corrige o lr
     sub lr, lr, #4
 
-    ldmfd sp!, {r4} @r4 recebe o valor de SPSR
-    msr CPSR_c, r4      @ Volta para o estado anterior
+    mov pc, lr                 @ Retorna da interrupção
 
-    ldmfd sp!, {r0-r4, r7}
-    movs pc, lr                 @ Retorna da interrupção
-
-
-@-------------------------------------------
-@ Rotina que recupera o contexto.
-@ Retorna em r0 o modo anterior
-@-------------------------------------------
-RECUPERA_CONTEXTO:
-    ldmfd sp!, {r5}
-    ldmfd sp!, {r0-r4}
-    mov pc, lr
 
 @---------------------------------------------------------------------------------------------
 @ Rotina que executa cerca de 10 000 instruções com intuito de gerar delay
 @---------------------------------------------------------------------------------------------
 DELAY:
 
-    mov r0, #1
+    mov r0, #0
     ldr r1, =QTD_INSTRUCOES_DELAY
 
     laco_delay:
+    add r0, r0, #1
     cmp r0, r1
     blls laco_delay
 
@@ -355,7 +341,7 @@ READ_SONAR:
 @-------------------------------------------
 SET_MOTOR_SPEED:
     
-    msr CPSR_c, 0xD3        @Desabilita interrupcao no modo Supervisor
+    msr CPSR, 0xD3        @Desabilita interrupcao no modo Supervisor
 
     stmfd SP!, {r4}
 
@@ -393,7 +379,7 @@ SET_MOTOR_SPEED:
 
     set_motor_speed_fim:
     ldmfd SP!, {r4}
-    msr CPSR_c, 0x13            @ Habilita interrupcao no modo Supervisor
+    msr CPSR, 0x13            @ Habilita interrupcao no modo Supervisor
     movs pc, lr
 
 @-------------------------------------------
@@ -409,7 +395,7 @@ SET_MOTOR_SPEED:
 @-------------------------------------------
 SET_MOTORS_SPEED:
 
-    msr CPSR_c, 0xD3        @Desabilita interrupcao no modo Supervisor
+    msr CPSR, 0xD3        @Desabilita interrupcao no modo Supervisor
     stmfd SP!, {r4}
 
     @Valida a velocidade
@@ -440,7 +426,7 @@ SET_MOTORS_SPEED:
 
     set_motors_speed_fim:
     ldmfd SP!, {r4}
-    msr CPSR_c, 0x13            @ Habilita interrupcao no modo Supervisor
+    msr CPSR, 0x13            @ Habilita interrupcao no modo Supervisor
     movs pc, lr
 
 
@@ -469,10 +455,10 @@ GET_TIME:
 @    Nenhum
 @-------------------------------------------
 SET_TIME:
-    msr CPSR_c, 0xD3        @Desabilita interrupcao no modo Supervisor
+    msr CPSR, 0xD3        @Desabilita interrupcao no modo Supervisor
     ldr r1, =CONTADOR
     str r0, [r1]
-    msr CPSR_c, 0x13            @ Habilita interrupcao no modo Supervisor
+    msr CPSR, 0x13            @ Habilita interrupcao no modo Supervisor
     movs pc, lr
 
 @-----------------------------------------------------------
@@ -487,9 +473,9 @@ SET_TIME:
 @         0 caso contrário.
 @-----------------------------------------------------------
 @ Parametro
-SET_ALARM:  @TODO
+SET_ALARM:
     
-    msr CPSR_c, 0xD3        @Desabilita interrupcao no modo Supervisor
+    msr CPSR, 0xD3        @Desabilita interrupcao no modo Supervisor
     stmfd SP!, {r4-r9}
 
     @Incrementa o contador QTD_ALARM
@@ -560,7 +546,7 @@ SET_ALARM:  @TODO
     
     set_alarm_fim:
     ldmfd SP!, {r4-r9}
-    msr CPSR_c, 0x13            @ Habilita interrupcao no modo Supervisor
+    msr CPSR, 0x13            @ Habilita interrupcao no modo Supervisor
     movs pc, lr
 
 

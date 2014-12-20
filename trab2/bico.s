@@ -1,5 +1,5 @@
-.global set_speed_motor
-.global set_speed_motors
+.global set_motor_speed
+.global set_motors_speed
 .global read_sonar
 .global read_sonars
 .global add_alarm
@@ -8,7 +8,7 @@
 
 .align 4
 
-set_speed_motor:		@ Seta a velocidade do motor. Em r0 está a velocidade e em r1 está o motor id (0 for left motor, 1 for right motor)
+set_motor_speed:		@ Seta a velocidade do motor. Em r0 está a velocidade e em r1 está o motor id (0 for left motor, 1 for right motor)
 
 	stmfd SP!, {r7}
 	mov r7, #9
@@ -16,7 +16,7 @@ set_speed_motor:		@ Seta a velocidade do motor. Em r0 está a velocidade e em r1
 	ldmfd SP!, {r7}
 	mov pc, lr
 
-set_speed_motors: 		@ Seta as velocidades dos motores. Em r0 está a velocidade do motor 0 e em r1 está a velocidade do motor 1
+set_motors_speed: 		@ Seta as velocidades dos motores. Em r0 está a velocidade do motor 0 e em r1 está a velocidade do motor 1
 
 	stmfd SP!, {r7}
 	mov r7, #10
@@ -51,14 +51,6 @@ read_sonars:
 		ldmfd SP!, {r7}
 		mov pc, lr
 
-
-add_alarm:
-	ldmfd SP!, {r7}
-	mov r7, #13
-	svc 0x0
-	ldmfd SP!, {r7}
-	mov pc, lr
-
 get_time:
 	ldmfd SP!, {r7}
 	mov r7, #11
@@ -69,6 +61,13 @@ get_time:
 set_time:
 	ldmfd SP!, {r7}
 	mov r7, #12
+	svc 0x0
+	ldmfd SP!, {r7}
+	mov pc, lr
+
+add_alarm:
+	ldmfd SP!, {r7}
+	mov r7, #13
 	svc 0x0
 	ldmfd SP!, {r7}
 	mov pc, lr

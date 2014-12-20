@@ -17,17 +17,17 @@ void _start(void){
 }
 
 void passinho_180_D(int duracao){
-	set_speed_motors(15, 0);
+	set_motors_speed(15, 0);
 	delay(duracao);
 }
 
 void passinho_180_E(int duracao){
-	set_speed_motors(0, 15);
+	set_motors_speed(0, 15);
 	delay(duracao);
 }
 
 void passinhoPraFrente(int duracao){
-	set_speed_motors(15, 15);
+	set_motors_speed(15, 15);
 	delay(duracao);
 }
 
@@ -49,11 +49,11 @@ void race(){
 		
 	int distanciaFrente, distanciaEsquerda, distanciaDireita;
 
-	set_speed_motors(20, 20);
+	set_motors_speed(20, 20);
 	
 	/*for(;;){
 		
-		set_speed_motors(0, 0); // para o robozinho
+		set_motors_speed(0, 0); // para o robozinho
 
 		distanciaFrente = read_sonar(FRENTE_SONAR_ID);
 		distanciaFrente = read_sonar(ESQUERDA_SONAR_ID);
@@ -61,15 +61,15 @@ void race(){
 
 		if(distanciaDireita > distanciaEsquerda){
 			if(distanciaDireita > distanciaFrente)
-				set_speed_motors(0, 10);
+				set_motors_speed(0, 10);
 		}
 		else{
 			if(distanciaEsquerda > distanciaFrente){
-				set_speed_motors(10, 0);
+				set_motors_speed(10, 0);
 			}
 		}
 
-		set_speed_motors(15,15);
+		set_motors_speed(15,15);
 		delay(10000);
 	}
 		*/
