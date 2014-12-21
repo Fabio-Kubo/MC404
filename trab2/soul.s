@@ -156,25 +156,25 @@ SET_TZIC:
 SUPERVISOR_HANDLER:
     
     cmp r7, #8
-    bleq READ_SONAR
+    beq READ_SONAR
         
     cmp r7, #9
-    bleq SET_MOTOR_SPEED
+    beq SET_MOTOR_SPEED
         
     cmp r7, #10
-    bleq SET_MOTORS_SPEED
+    beq SET_MOTORS_SPEED
         
     cmp r7, #11
-    bleq GET_TIME
+    beq GET_TIME
         
     cmp r7, #12
-    bleq SET_TIME
+    beq SET_TIME
 
     cmp r7, #13
-    bleq SET_ALARM
+    beq SET_ALARM
 
     cmp r7, #14
-    bleq RECUPERA_MODO_SUPER
+    beq RECUPERA_MODO_SUPER
 
 @-------------------------------------------
 @ No tratamento dessa interrupção é feito
@@ -265,7 +265,7 @@ DELAY:
     laco_delay:
     add r0, r0, #1
     cmp r0, r1
-    blls laco_delay
+    bls laco_delay
 
     mov pc, lr
     
@@ -492,9 +492,9 @@ SET_ALARM:
     @Valida o tempo
     ldr r4, =CONTADOR
     ldr r4, [r4]
-    cmp r1, r4
+    cmp r1, r4  @Compara o tempo atual com o tempo passado como parametro
     movls r0, #-2       @Se for menor ou igual, seta o codigo do erro em r0
-    blls set_alarm_fim  @vai para o final da função
+    bls set_alarm_fim  @vai para o final da função
 
     str r3, [r2]  @Salva o novo valor no contador
     
@@ -507,7 +507,7 @@ SET_ALARM:
         cmp r2, #-1
         beq salva_novo_alarme
 
-        cmp r1, r2
+        cmp r1, r2  @Compara o tempo do parametro com o tempo da posicao atual
         bhi desloca_lista
         add r3, r3, #4
         add r6, r6, #4
@@ -516,8 +516,8 @@ SET_ALARM:
     desloca_lista:
     add r5, r3, #4 @ Coloca em r5 o endereco do proximo alarme
 
-    ldr r8, [r6] @Carrega a funçao atual
-    add r7, r6, #4 @ Coloca em r7 o endereco do proximo função
+    ldr r8, [r6] @Carrega a funçao do alarme da posicao atual
+    add r7, r6, #4 @ Coloca em r7 o endereco da funcao do proximo alarme
 
     loop_deslocamento:
     
@@ -531,7 +531,7 @@ SET_ALARM:
         beq salva_novo_alarme   @Se estiver vazia, acabou o deslocamento
 
         mov r2, r4              @Caso contrário, coloco em r2 o alarme do i+1
-        mov r8, r9              @Caso contrário, coloco em r2 a função do i+1
+        mov r8, r9              @Caso contrário, coloco em r8 a função do i+1
 
         add r5, r5, #4           @Avanço para o alarme de posicao i+2
         add r7, r7, #4           @Avanço para função de posicao i+2

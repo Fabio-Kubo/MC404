@@ -12,7 +12,7 @@ void race();
 /* main function */
 void _start(void){
 
-	//add_alarm(dance, 30);
+	add_alarm(dance, 30);
 	race();
 }
 
@@ -49,9 +49,7 @@ void race(){
 		
 	int distanciaFrente, distanciaEsquerda, distanciaDireita;
 
-	set_motors_speed(20, 20);
-	
-	/*for(;;){
+	for(;;){
 		
 		set_motors_speed(0, 0); // para o robozinho
 
@@ -60,19 +58,24 @@ void race(){
 		distanciaFrente = read_sonar(DIREITA_SONAR_ID);
 
 		if(distanciaDireita > distanciaEsquerda){
-			if(distanciaDireita > distanciaFrente)
-				set_motors_speed(0, 10);
+			if(distanciaDireita > distanciaFrente){	
+				set_motors_speed(0, 10); // rotaciona para direita
+			}
+			else{
+				set_motors_speed(15,15); // vai reto		
+			}
 		}
 		else{
 			if(distanciaEsquerda > distanciaFrente){
-				set_motors_speed(10, 0);
+				set_motors_speed(10, 0); // rotaciona pra esquerda
+			}
+			else{
+				set_motors_speed(15,15); // vai reto
 			}
 		}
 
-		set_motors_speed(15,15);
 		delay(10000);
 	}
-		*/
 }
 
 /* Spend some time doing nothing. */
